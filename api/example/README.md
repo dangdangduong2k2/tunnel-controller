@@ -23,7 +23,7 @@ Chọn một lệnh phù hợp. Claim làm máy STOP/HOLD. Script duy trì heart
 reply, thoát maintenance/release khi có thể. Không ghi công suất RF.
 `--help` không kết nối thiết bị. [Toàn bộ API](../docs/API_REFERENCE.md).
 
-## Scan tag không cần homing (firmware 1.12.1+)
+## Scan tag không cần homing (firmware 1.12.2+)
 
 ```console
 python example/scan_tags.py --transport tcp --host 192.168.102.11 --seconds 8
@@ -67,7 +67,7 @@ Release làm STOP/HOLD. Nếu release thất bại, báo lỗi; không giấu b�
 | `reset` | `reset()` / 1 | Reset/homing; có thể làm cửa chuyển động. Chỉ khi chủ động yêu cầu. |
 | `gate 1` / `gate 0` | `set_gate(close)` / 2 | 1 đóng/homing, 0 mở; cần điều kiện cơ khí hợp lệ. |
 | `belt 1` / `belt 0` | `set_belt(run)` / 3 | Chạy/dừng băng tải; không vượt interlock. |
-| `scan 1` / `scan 0` | `set_scan(run)` / 4 | Bắt đầu/dừng RF độc lập; FW1.12.1 không cần home, mọi motor phải dừng. |
+| `scan 1` / `scan 0` | `set_scan(run)` / 4 | Bắt đầu/dừng RF độc lập; FW1.12.2 không cần home, mọi motor phải dừng. |
 | `mode 0` / `mode 1` | `set_mode(mode)` / 5 | AUTO/SEMI; chỉ trạng thái cho phép, có thể mở cửa. |
 | `confirm` | `confirm()` / 6 | Xác nhận kết quả tại state9 trong cùng phiên. |
 | `rescan` | `rescan()` / 7 | Quét lại tại state9 trong cùng phiên. |

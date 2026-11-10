@@ -12,6 +12,12 @@ void EspControlAlive(void);
 uint8_t EspEmergencyHeld(void);
 uint8_t EspEmergencyLatched(void);
 uint8_t EspMotorReady(void);
+/* USB START authorization is separate from the motor HOLD latch. Every STOP
+ * invalidates queued START tokens, including across a later explicit scan. */
+uint32_t EspRfStartToken(void);
+uint8_t EspRfAuthorizeStandalone(uint32_t expected);
+void EspRfRevoke(void);
+uint8_t EspRfStartAllowed(uint32_t token);
 void EspPcTransmit(const uint8_t *, uint16_t);
 void EspPcPoll(void);
 void EspLog(const char *);

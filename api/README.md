@@ -9,7 +9,7 @@ Chọn đúng giao thức đang dùng để xem cách kết nối và **toàn b�
 
 Cả ba giao thức hỗ trợ đủ19 OP hiện có của firmware. Tên hàm Python giống nhau;
 kết nối, cách truyền lệnh và cách quản lý phiên được ghi riêng ở từng mục.
-SDK 0.1.2, Python 3.10+. Modbus dùng map từ firmware 1.10.2; MQTT cần firmware 1.11.0+.
+SDK 0.1.3, Python 3.10+. Modbus dùng map từ firmware 1.10.2; MQTT cần firmware 1.11.0+.
 
 Ví dụ chạy đủ **19 lệnh trên cả RTU, TCP/IP và MQTT**: [device_console.py](example/device_console.py).
 Xem [bảng lệnh và các tình huống](example/README.md): giữ phiên Confirm/Rescan, cài
@@ -86,7 +86,7 @@ OP20..29 cần thêm maintenance. Mọi hàm ở bảng dưới trả ACK trư�
 | 1 | `rtu.reset()` | Reset lỗi/STOP và homing; có thể chuyển động hai cửa. |
 | 2 | `rtu.set_gate(close=1)` | 1=đóng/homing;0=mở. Cần trạng thái cho phép. |
 | 3 | `rtu.set_belt(run=1)` | 1=chạy thuận;0=dừng riêng băng tải. Kiểm tra liên động. |
-| 4 | `rtu.set_scan(run=1)` | 1=bắt đầu RFID;0=dừng. Từ FW1.12.1: không cần home, mọi motor phải dừng. |
+| 4 | `rtu.set_scan(run=1)` | 1=bắt đầu RFID;0=dừng. Từ FW1.12.2: không cần home, mọi motor phải dừng. |
 | 5 | `rtu.set_mode(mode=1)` | 0=AUTO;1=SEMI. Đổi khi máy ở trạng thái phù hợp, đã homing. |
 | 6 | `rtu.confirm()` | Xác nhận cho hàng qua; chỉ khi SEMI đang chờ xác nhận (state9). |
 | 7 | `rtu.rescan()` | Quét lại; chỉ khi SEMI đang chờ xác nhận (state9). |
@@ -194,7 +194,7 @@ OP20..29 cần thêm maintenance. Mọi hàm ở bảng dưới trả ACK trư�
 | 1 | `tcp.reset()` | Reset lỗi/STOP và homing; có thể chuyển động hai cửa. |
 | 2 | `tcp.set_gate(close=1)` | 1=đóng/homing;0=mở. Cần trạng thái cho phép. |
 | 3 | `tcp.set_belt(run=1)` | 1=chạy thuận;0=dừng riêng băng tải. Kiểm tra liên động. |
-| 4 | `tcp.set_scan(run=1)` | 1=bắt đầu RFID;0=dừng. Từ FW1.12.1: không cần home, mọi motor phải dừng. |
+| 4 | `tcp.set_scan(run=1)` | 1=bắt đầu RFID;0=dừng. Từ FW1.12.2: không cần home, mọi motor phải dừng. |
 | 5 | `tcp.set_mode(mode=1)` | 0=AUTO;1=SEMI. Đổi khi máy ở trạng thái phù hợp, đã homing. |
 | 6 | `tcp.confirm()` | Xác nhận cho hàng qua; chỉ khi SEMI đang chờ xác nhận (state9). |
 | 7 | `tcp.rescan()` | Quét lại; chỉ khi SEMI đang chờ xác nhận (state9). |
@@ -308,7 +308,7 @@ OP20..29 cần thêm maintenance. Mọi hàm ở bảng dưới trả ACK trư�
 | 1 | `mqtt.reset()` | Reset lỗi/STOP và homing; có thể chuyển động hai cửa. |
 | 2 | `mqtt.set_gate(close=1)` | 1=đóng/homing;0=mở. Cần trạng thái cho phép. |
 | 3 | `mqtt.set_belt(run=1)` | 1=chạy thuận;0=dừng riêng băng tải. Kiểm tra liên động. |
-| 4 | `mqtt.set_scan(run=1)` | 1=bắt đầu RFID;0=dừng. Từ FW1.12.1: không cần home, mọi motor phải dừng. |
+| 4 | `mqtt.set_scan(run=1)` | 1=bắt đầu RFID;0=dừng. Từ FW1.12.2: không cần home, mọi motor phải dừng. |
 | 5 | `mqtt.set_mode(mode=1)` | 0=AUTO;1=SEMI. Đổi khi máy ở trạng thái phù hợp, đã homing. |
 | 6 | `mqtt.confirm()` | Xác nhận cho hàng qua; chỉ khi SEMI đang chờ xác nhận (state9). |
 | 7 | `mqtt.rescan()` | Quét lại; chỉ khi SEMI đang chờ xác nhận (state9). |

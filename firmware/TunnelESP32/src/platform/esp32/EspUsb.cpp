@@ -15,7 +15,7 @@ struct Device {
     uint16_t vid, pid;
 };
 struct Transfer {
-    uint32_t epoch;
+    uint32_t epoch, rfToken;
     uint8_t length, data[64];
 };
 struct Event {
@@ -154,7 +154,8 @@ static void worker(void *) {
         Transfer request;
         if (xQueueReceive(txQueue, &request, pdMS_TO_TICKS(2)) == pdTRUE) {
             bool allowed = handle && wireReady.load() && request.epoch == epoch.load();
-            if (request.length >= 3 && request.data[2] == 0x50 && EspEmergencyLatched())
+            if (request.length >= 3 && request.data[2] == 0x50 &&
+                !EspRfStartAllowed(request.rfToken))
                 allowed = false;
             esp_err_t err =
                 allowed ? cdc_acm_host_data_tx_blocking(handle, request.data, request.length, 500)
@@ -213,6 +214,7 @@ extern "C" USBH_StatusTypeDef USBH_CP210X_Transmit(USBH_HandleTypeDef *, uint8_t
         return USBH_BUSY;
     Transfer m = {};
     m.epoch = ownerEpoch;
+    m.rfToken = EspRfStartToken();
     m.length = size;
     memcpy(m.data, data, size);
     if (xQueueSend(txQueue, &m, 0) != pdTRUE)

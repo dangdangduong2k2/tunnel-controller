@@ -906,10 +906,16 @@ static void Tunnel_ProcessRescanWait(uint32_t now) {
  * inventory still uses Tunnel_StartClosedGateScan and its door interlocks. */
 static uint8_t Tunnel_RequestManualScan(uint16_t run) {
     uint8_t i;
+#ifdef ARDUINO
+    uint32_t rf_token = EspRfStartToken();
+#endif
     if (run > 1U)
         return 1U;
     if (!run) {
         if (manual_scan_only) {
+#ifdef ARDUINO
+            EspRfRevoke();
+#endif
             manual_scan_requested = 0U;
             ZK7182_PauseScan();
         } else if (ZK7182_IsScanActive()) {
@@ -933,6 +939,10 @@ static uint8_t Tunnel_RequestManualScan(uint16_t run) {
         return (manual_scan_requested && !manual_scan_stopping) ? 0U : 2U;
     if (!ZK7182_IsReady())
         return 4U;
+#ifdef ARDUINO
+    if (!EspRfAuthorizeStandalone(rf_token))
+        return 2U; /* A concurrent STOP must win over this request. */
+#endif
     manual_scan_only = 1U;
     manual_scan_requested = 1U;
     manual_scan_wait_tick = HAL_GetTick();
@@ -987,6 +997,10 @@ static void Tunnel_ProcessManual(uint32_t now) {
         (MotorPwm_IsRunning(CONVEYOR_DRIVER) == 0U) && (Tunnel_GatesRunning() == 0U)) {
         /* Finishing an isolated read must not arm AUTO on a sensor edge. */
         Tunnel_SetState(manual_scan_only ? TUNNEL_STOPPED : TUNNEL_WAIT_REARM);
+#ifdef ARDUINO
+        if (manual_scan_only)
+            EspRfRevoke();
+#endif
         manual_scan_only = 0U;
     }
 }

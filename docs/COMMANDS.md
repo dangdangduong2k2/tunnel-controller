@@ -9,7 +9,7 @@ Tham số theo thứ tự ARG0..ARG5; các ô còn lại phải bằng 0. MQTT n
 | 1 | `reset` | `{}` / không có | Reset lỗi/STOP và khởi tạo lại chu trình; có thể bắt đầu homing/chuyển động. |
 | 2 | `gate` | `close`: 0..1 | Điều khiển cửa: 1 đóng/homing, 0 mở; còn phụ thuộc trạng thái máy. |
 | 3 | `belt` | `run`: 0..1 | Băng tải: 0 dừng, 1 chạy thuận trong chế độ điều khiển tay. |
-| 4 | `scan` | `run`: 0..1 | Scan RFID độc lập: 0 dừng, 1 bắt đầu. Từ firmware1.12.1 không cần homing/cửa đóng; yêu cầu mọi motor dừng, không maintenance/Emergency. |
+| 4 | `scan` | `run`: 0..1 | Scan RFID độc lập: 0 dừng, 1 bắt đầu. Từ firmware1.12.2 không cần homing/cửa đóng; yêu cầu mọi motor dừng, không maintenance/Emergency. |
 | 5 | `mode` | `mode`: 0..1 | Chọn chế độ: 0 tự động, 1 bán tự động. |
 | 6 | `confirm` | `{}` / không có | Xác nhận kết quả trong bước chờ xác nhận bán tự động. |
 | 7 | `rescan` | `{}` / không có | Yêu cầu quét lại trong bước chờ xác nhận. |

@@ -1,4 +1,4 @@
-"""Read EPC counts without homing or motor commands; firmware 1.12.1+ required."""
+"""Read EPC counts without homing or motor commands; firmware 1.12.2+ required."""
 
 import json
 import sys
@@ -12,8 +12,8 @@ def scan_tags(device, seconds=8, emit=print):
     if not 0 < seconds <= 25:
         raise ValueError("seconds must be >0 and <=25 (firmware has a 30-second limit)")
     state = device.get_status()
-    if state["firmware"] < 1121:
-        raise ProtocolError("Independent scan requires firmware 1.12.1+; do not auto-Reset")
+    if state["firmware"] < 1122:
+        raise ProtocolError("Independent scan requires firmware 1.12.2+; do not auto-Reset")
     if state["owner"] or state["activity_flags"] & 31 or state["reader_state"] == 1:
         raise ProtocolError("Machine must be idle, unowned, outside maintenance")
     console = Console(device)
@@ -48,7 +48,14 @@ def scan_tags(device, seconds=8, emit=print):
             time.sleep(0.1)
         raise ProtocolError("Reader STOP not confirmed; inspect live state")
     finally:
-        console.close()  # Release/STOP even when scan or its ACK fails; never Reset.
+        failed = sys.exc_info()[0] is not None
+        try:
+            console.close()  # Release owned control; never Reset or reacquire.
+        except Exception as exc:
+            if not failed:
+                raise
+            # A dead socket during cleanup must not hide the original failure.
+            print(f"Cleanup not confirmed: {exc}", file=sys.stderr)
 
 
 def main():

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.3
+
+- Standalone scan example now requires firmware 1.12.2; 1.12.1 still blocked
+  reader START at the ESP USB layer after claim. Wire operations are unchanged.
+- Preserve the original scan failure if cleanup also loses its connection.
+
 ## 0.1.2
 
 - Added `example/scan_tags.py`: independent RF scan without homing or motor commands,

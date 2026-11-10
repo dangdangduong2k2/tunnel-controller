@@ -47,3 +47,24 @@ không gửi Reset hoặc lệnh motor. ANT1 bật, công suất 22 dBm.
 Hai lần thử TCP vẫn có EPC = 0 và có lỗi đóng kết nối; sau đó bo báo STOPPED,
 owner = 0, activity = 0, fault = 0. Vì vậy phần đọc tag thật và độ ổn định
 kết nối trong Scan **chưa được xác nhận đạt**. Không tự lặp lệnh khi mất ACK.
+
+## Bản sửa 1.12.2 — quyền START ở lớp USB
+
+1.12.1 chỉ bỏ điều kiện Home ở tầng điều khiển. Lớp USB vẫn dùng khóa motor
+`EspEmergencyLatched()` để chặn START 0x50; claim chủ động khóa motor nên START
+không ra tới reader, dù status đã báo scan đang tiến hành. Vì vậy không dùng
+1.12.1 để nghiệm thu Scan độc lập. Ví dụ SDK 0.1.3 yêu cầu firmware >= 1.12.2.
+
+1.12.2 cấp quyền RF riêng sau khi kiểm tra Scan hợp lệ, không xóa khóa motor.
+Mỗi yêu cầu START mang token; STOP/Emergency/Scan OFF vô hiệu token cũ, kể cả
+START còn trong hàng đợi USB. STOP xảy ra trong lúc xin quyền làm xin quyền thất bại.
+Test dùng backend motor ESP thật xác nhận các trường hợp này; 22 suite native đạt.
+Đã nạp 1.12.2 và verify flash; boot/partition/NVS giữ nguyên. Scan thực tế từ
+STARTUP_WAIT, chưa Home, đọc được 2 EPC. Phiên 3 giây có 51 lượt đọc, phiên
+12 giây có 193 lượt đọc; cả hai dừng và release thành công. Không gửi Reset
+hoặc lệnh motor; các mẫu status không có bit motor hoạt động. Trạng thái cuối:
+STOPPED, owner = 0, activity = 0, fault = 0, EPC = 2.
+
+Lần thử đầu vẫn gặp lỗi đóng TCP giữa phiên (đã đọc 2 EPC); hai lần tiếp theo
+không tái hiện. Chưa xác định nguyên nhân TCP gián đoạn, chưa coi lỗi này đã sửa.
+SDK giữ lỗi gốc nếu cleanup cũng lỗi, không tự retry hoặc claim lại.

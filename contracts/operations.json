@@ -2,7 +2,7 @@
   {"op":1,"method":"reset","params":[],"effect":"Reset lỗi/STOP và khởi tạo lại chu trình; có thể bắt đầu homing/chuyển động."},
   {"op":2,"method":"gate","params":[["close",0,1]],"effect":"Điều khiển cửa: 1 đóng/homing, 0 mở; còn phụ thuộc trạng thái máy."},
   {"op":3,"method":"belt","params":[["run",0,1]],"effect":"Băng tải: 0 dừng, 1 chạy thuận trong chế độ điều khiển tay."},
-  {"op":4,"method":"scan","params":[["run",0,1]],"effect":"Scan RFID độc lập: 0 dừng, 1 bắt đầu. Từ firmware1.12.1 không cần homing/cửa đóng; yêu cầu mọi motor dừng, không maintenance/Emergency."},
+  {"op":4,"method":"scan","params":[["run",0,1]],"effect":"Scan RFID độc lập: 0 dừng, 1 bắt đầu. Từ firmware1.12.2 không cần homing/cửa đóng; yêu cầu mọi motor dừng, không maintenance/Emergency."},
   {"op":5,"method":"mode","params":[["mode",0,1]],"effect":"Chọn chế độ: 0 tự động, 1 bán tự động."},
   {"op":6,"method":"confirm","params":[],"effect":"Xác nhận kết quả trong bước chờ xác nhận bán tự động."},
   {"op":7,"method":"rescan","params":[],"effect":"Yêu cầu quét lại trong bước chờ xác nhận."},

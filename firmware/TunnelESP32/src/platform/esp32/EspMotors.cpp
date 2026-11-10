@@ -29,6 +29,24 @@ static std::atomic<bool> released(false);
 static std::atomic<uint8_t> stopReason(STOP_NONE);
 static std::atomic<uint32_t> alive(0), beltPeriod(0);
 static bool initialized = false;
+// Low bit grants standalone RF only; upper bits fence every STOP/rearm.
+static std::atomic<uint32_t> rfAuthorization(0);
+extern "C" uint32_t EspRfStartToken(void) {
+    return rfAuthorization.load();
+}
+extern "C" void EspRfRevoke(void) {
+    uint32_t old = rfAuthorization.load();
+    while (!rfAuthorization.compare_exchange_weak(old, (old + 2U) & ~1U)) {}
+}
+extern "C" uint8_t EspRfAuthorizeStandalone(uint32_t expected) {
+    if (released.load() || EspEmergencyHeld())
+        return 0;
+    return rfAuthorization.compare_exchange_strong(expected, (expected + 2U) | 1U);
+}
+extern "C" uint8_t EspRfStartAllowed(uint32_t token) {
+    return token == rfAuthorization.load() && !released.load() && !EspEmergencyHeld() &&
+           (!emergency.load() || (token & 1U));
+}
 
 extern "C" uint8_t EspEmergencyHeld(void) {
 #if EMERGENCY_GPIO >= 0
@@ -137,12 +155,14 @@ static void stopOutputs(void) {
         xSemaphoreGive(outputLock);
 }
 extern "C" void MotorPwm_EmergencyStop(void) {
+    EspRfRevoke();
     released = true;
     stopReason = STOP_EMERGENCY;
     emergency = true;
     stopOutputs();
 }
 extern "C" void MotorPwm_SafetyStop(uint8_t reason) {
+    EspRfRevoke();
     latchFault(reason);
     stopOutputs();
 }
@@ -213,6 +233,7 @@ extern "C" void EspMotorsBegin(void) {
             gpio_set_level((gpio_num_t)board::GATE_EN[i], STEP_HOLD_LEVEL);
 }
 extern "C" void MotorPwm_Init(void) {
+    EspRfRevoke();
     EspMotorsBegin();
     MotorPwm_Stop(MOTOR_PWM_DRIVER_1);
     MotorPwm_Stop(MOTOR_PWM_DRIVER_2);

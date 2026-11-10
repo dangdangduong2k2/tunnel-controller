@@ -171,6 +171,33 @@ int main() {
     assert(MotorPwm_GetStopReason() == STOP_EMERGENCY);
     MotorPwm_Init();
     assert(!MotorPwm_IsReleased() && !MotorPwm_GetStopReason());
+    // Exercise the SAME authorization called by the real USB worker, not the
+    // reader transport mock: claim HOLD may scan without unlocking any motor.
+    MotorPwm_SafetyStop(STOP_PC_TAKEOVER);
+    uint32_t beforeClaimScan = EspRfStartToken();
+    assert(!EspRfStartAllowed(beforeClaimScan));
+    assert(EspRfAuthorizeStandalone(beforeClaimScan));
+    uint32_t scanToken = EspRfStartToken();
+    assert(EspRfStartAllowed(scanToken) && !EspRfStartAllowed(beforeClaimScan));
+    assert(EspEmergencyLatched());
+    assert(!MotorPwm_StartProfile(MOTOR_PWM_DRIVER_1, 0, &close, 0));
+    assert(!MotorPwm_StartContinuousArr(CONVEYOR_DRIVER, CONVEYOR_DIRECTION, 29));
+    assert(pins[9] == STEP_HOLD_LEVEL && pins[7] == STEP_HOLD_LEVEL);
+    MotorPwm_SafetyStop(STOP_PC_DISCONNECT);
+    assert(!EspRfStartAllowed(scanToken));
+    assert(!EspRfAuthorizeStandalone(scanToken)); // STOP between check and grant
+    assert(EspRfAuthorizeStandalone(EspRfStartToken()));
+    uint32_t newToken = EspRfStartToken();
+    assert(EspRfStartAllowed(newToken) && !EspRfStartAllowed(scanToken));
+    EspRfRevoke(); // Scan OFF invalidates a START still queued in the worker
+    assert(!EspRfStartAllowed(newToken));
+    assert(EspRfAuthorizeStandalone(EspRfStartToken()));
+    newToken = EspRfStartToken();
+    MotorPwm_EmergencyStop();
+    assert(!EspRfStartAllowed(newToken));
+    assert(!EspRfAuthorizeStandalone(EspRfStartToken()));
+    MotorPwm_Init();
+    assert(EspRfStartAllowed(EspRfStartToken()) && !EspRfStartAllowed(newToken));
     puts("PASS real ESP output backend: faults HOLD both EN, Emergency RELEASE sticky until Reset; "
          "J6/J3 independent timers and limits, J2 forward DIR LOW / Rescan reverse DIR HIGH at "
          "133333 Hz, exact two-door opening count, all pulse outputs stop and both EN release, "
