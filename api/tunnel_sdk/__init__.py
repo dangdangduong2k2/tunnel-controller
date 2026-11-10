@@ -1,11 +1,14 @@
 """Tunnel SDK: explicit ownership and heartbeat; no automatic motion or retry."""
 
-from .errors import ProtocolError, UnknownOutcome
+from .errors import ProtocolError, UnknownOutcome, ReaderError
 from .status import decode_status
 from .common import crc16, words
 from .operations import OPERATIONS
 from .modbus import Modbus
 from .mqtt import Mqtt
+from .device import TunnelDevice
+
+__version__ = "0.1.0"
 
 
 def from_settings(settings):
@@ -34,6 +37,9 @@ def from_settings(settings):
 
 
 __all__ = [
+    "TunnelDevice",
+    "ReaderError",
+    "__version__",
     "Modbus",
     "Mqtt",
     "ProtocolError",

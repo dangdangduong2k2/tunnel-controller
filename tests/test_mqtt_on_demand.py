@@ -19,6 +19,11 @@ sys.path.insert(0, str(ROOT / "api"))
 spec = importlib.util.spec_from_file_location("tunnel_api", ROOT / "api/tunnel_api.py")
 sdk = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(sdk)
+from tunnel_sdk import TunnelDevice
+
+sys.path.insert(0, str(ROOT / "api/example"))
+from reader_power import read_power
+
 logging.disable(logging.CRITICAL)
 loop = asyncio.new_event_loop()
 thread = threading.Thread(target=loop.run_forever, daemon=True)
@@ -195,6 +200,15 @@ try:
     assert a.command("maintenance", [0])["accepted"] and a.release()["accepted"]
     assert a.status()["owner"] == 0
     # Read requests from another application must not hold/renew control.
+    baseline = len(commands)
+    with TunnelDevice.mqtt("127.0.0.1", port=port, root="test/tunnel") as public:
+        assert public.get_status()["epc_count"] == 7
+        assert read_power(public) == dict.fromkeys(["ANT1", "ANT2", "ANT3", "ANT4"], 30)
+        assert not public.has_control()
+    assert all("method" not in c for c in commands[baseline:])
+    assert any(c.get("op") == 21 for c in commands[baseline:])
+    print("PASS public MQTT API uses numeric 1.11-compatible OPs and reader cleanup", flush=True)
+
     assert a.claim()["accepted"]
     deadline = time.monotonic() + 3.2
     while time.monotonic() < deadline:

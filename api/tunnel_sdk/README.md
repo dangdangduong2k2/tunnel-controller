@@ -2,6 +2,7 @@
 
 | File | Vai trò |
 |---|---|
+| [device.py](device.py) | TunnelDevice: lifecycle, 19 hàm công khai, numeric wire và kiểm tra reader reply |
 | [modbus.py](modbus.py) | Socket TCP/Serial RTU, framing/CRC, mailbox sequence và no-retry khi lỗi |
 | [mqtt.py](mqtt.py) | Paho client, SUBACK, get/state correlation, token/ACK, named command |
 | [status.py](status.py) | Decode96registers thành cùng object cho ba transport |

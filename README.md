@@ -11,6 +11,10 @@ Bản này chuẩn hóa từ 1.11.0: tách module, tách SDK, gom contract, thê
 3. Firmware nằm trong `dist/`; đọc hướng dẫn nạp/rollback trước khi nạp. Không dùng erase-all nếu muốn giữ cấu hình.
 4. Khi tích hợp thiết bị, dùng [API chung](docs/API.md), [Modbus](docs/MODBUS.md), [MQTT](docs/MQTT.md), [SDK Python](api/README.md).
 
+SDK Python hiện cài được bằng `python -m pip install "./api[all]"`.
+API `TunnelDevice` có đủ 19 lệnh; xem [cách gọi từng hàm](api/docs/API_REFERENCE.md).
+Xuất bộ SDK độc lập: `python tools/export_sdk.py <thu-muc-moi>` rồi build trong thư mục đó.
+
 ## Thành phần
 
 | Thư mục | Nội dung |

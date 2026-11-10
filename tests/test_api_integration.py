@@ -17,6 +17,10 @@ from unittest.mock import patch
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "api"))
 from tunnel_api import Modbus, ProtocolError, crc16
+from tunnel_sdk import TunnelDevice
+
+sys.path.insert(0, str(ROOT / "api/example"))
+from reader_power import read_power
 
 
 class Native:
@@ -130,6 +134,14 @@ def main():
         )
         tcp_client.release()
 
+        with TunnelDevice.tcp("127.0.0.1", port=tcp.server_address[1]) as public:
+            powers = read_power(public)
+            check(
+                list(powers.values()) == [20, 21, 22, 23],
+                "Public TCP API + complete reader example",
+            )
+            check(not public.has_control(), "Example released TCP ownership")
+
         class SerialIO:
             def __init__(self, *args, **kwargs):
                 self.data = b""
@@ -167,6 +179,13 @@ def main():
                 raise AssertionError("TCP stole RTU")
             check(rtu.execute(8, [3])["accepted"], "RTU FC16 mailbox / FC03 result")
             rtu.release()
+
+            with TunnelDevice.rtu("SIMULATED") as public:
+                check(
+                    list(read_power(public).values()) == [20, 21, 22, 23],
+                    "Public RTU API + complete reader example",
+                )
+                check(not public.has_control(), "Example released RTU ownership")
 
         tcp_client.claim()
         time.sleep(3.1)

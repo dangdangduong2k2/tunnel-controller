@@ -227,6 +227,10 @@ class Mqtt(Commands):
     def claim(self):
         return self._send("claim")
 
+    def has_control(self):
+        state = self.status()
+        return state["owner"] == 6 and state["owner_client"] == self.client_id
+
     def heartbeat(self):
         return self._send("heartbeat")
 

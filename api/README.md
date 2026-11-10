@@ -1,51 +1,109 @@
-# SDK Python và bộ bàn giao API
+# Tunnel IoT Python SDK
 
-Chạy `python -m pip install -r api/requirements.txt`. Import `tunnel_sdk` khi thư mục `api` có trên PYTHONPATH; `tunnel_api.py` vẫn là compatibility shim/CLI. Không cần SDK riêng cho từng hãng PLC: dùng bảng [Modbus](../docs/MODBUS.md) hoặc contract [MQTT](../docs/MQTT.md).
+Python SDK cho bo Tunnel qua **Modbus TCP**, **Modbus RTU / RS485** và **MQTT**.
+Cùng một API để đọc EPC, điều khiển cửa/băng tải và cài đặt reader/antenna.
 
-## Đọc trạng thái
+## Features
 
-```python
-from tunnel_sdk import Modbus, Mqtt
+### Base APIs
 
-device = Modbus(host="192.168.1.211")  # thay IP thực tế
-# device = Modbus(serial_port="COM7", baud=19200, parity="E", unit=1)
-# device = Mqtt("broker.example.com", root="factory/tunnel01/v1")
-try:
-    state = device.status()
-    print(state["unique_epcs"], state["total_reads"], state["ip"])
-finally:
-    device.close()
+- `TunnelDevice.tcp(...)`, `.rtu(...)`, `.mqtt(...)`
+- `connect()`, `is_connected()`, `close()` và context manager `with`
+- `get_status()`, `get_epc_count()`, `get_functions()`
+- `claim()`, `has_control()`, `heartbeat()`, `release()`, `stop()`, `emergency()`
+- `send_command(method, **params)`, `execute(op, args)`, `get_reader_result(sequence)`
+
+### Device control
+
+`reset`, `set_gate`, `set_belt`, `set_scan`, `set_mode`, `confirm`, `rescan`,
+`set_speed`, `set_maintenance`.
+
+### Reader and antenna
+
+`get_reader_info`, `get_antenna_power`, `set_antenna_power`, `set_antenna_mask`,
+`get_rf_profile`, `set_rf_profile`, `get_gen2x`, `set_gen2x`, `get_ex10`,
+`measure_return_loss`.
+
+**Đủ 19 OP đang được firmware cung cấp.** [API Reference](docs/API_REFERENCE.md)
+có cách gọi từng hàm, tham số, khoảng giá trị, tác động và cách lấy kết quả.
+
+## Prerequisite
+
+- Python 3.10 trở lên. SDK 0.1.0 có version riêng với firmware.
+- Modbus: map của firmware 1.10.2 trở lên. MQTT: firmware 1.11.0 trở lên.
+- IP/COM hoặc broker/root theo cấu hình bo. TCP mặc định 502; RTU ID1,19200,8E1.
+- MQTT dùng broker của hệ thống, không cần tài khoản Tuya. Firmware chưa hỗ trợ TLS.
+
+## Installation
+
+Giải nén SDK, mở terminal tại thư mục có `pyproject.toml`:
+
+```console
+python -m pip install ".[all]"
 ```
 
-TCP dùng socket giữ kết nối; RTU dùng pyserial. MQTT constructor chờ subscribe xong, `status()` mới gửi `/get`; không tự poll. Status SDK giải mã `registers` để ba transport có cùng kiểu dữ liệu. Tên `unique_epcs` trong SDK tương ứng `epc_count` trong JSON wire mới.
+Chỉ TCP: `python -m pip install .`; RTU: `".[rtu]"`; MQTT: `".[mqtt]"`.
+Trong checkout firmware dùng `python -m pip install "./api[all]"` từ gốc repo.
+Gói chưa publish lên PyPI; không cài theo tên từ PyPI.
 
-## Điều khiển có chủ đích
-
-Các hàm chung: `claim`, `heartbeat`, `release`, `stop`, `emergency`, `status`, `close`, `execute(op,args)`, `command(name,args)`, `call(method,**params)`. [Danh sách method/params](../docs/COMMANDS.md).
+## Usage
 
 ```python
-# Chỉ gọi khi vận hành cho phép; claim đưa máy về STOP/HOLD.
-ack = device.claim()
-if not ack["accepted"]:
-    raise RuntimeError(ack)
-# Heartbeat mỗi khoảng500ms do ứng dụng chủ động lập lịch.
-ack = device.call("maintenance", enabled=1)
-if not ack["accepted"]:
-    raise RuntimeError(ack)
-ack = device.call("antenna.power.get")
-# Chờ reader_state/reader_sequence/reply, kiểm tra cả transport và status reader.
-# Khi xong: maintenance(enabled=0), release; không suy ra hoàn tất từ ACK nhận lệnh.
+from tunnel_sdk import TunnelDevice
+
+# Thay bằng IP thực tế trên DWIN.
+with TunnelDevice.tcp("192.168.1.211") as device:
+    state = device.get_status()
+    print(state["epc_count"], state["total_reads"], state["ip"])
 ```
 
-Ví dụ đầy đủ có heartbeat/timeout/reader error/cleanup tại [mqtt_read_power.py](mqtt_read_power.py). Không chạy script điều khiển chỉ để xem giao diện; [mqtt_demo.py](mqtt_demo.py) chỉ đọc state theo số mẫu. `close()` không âm thầm gửi một lệnh máy; MQTT owner hết lease nếu ứng dụng không release được.
+Đổi transport, giữ nguyên các lời gọi phía sau:
 
-`ProtocolError`: lỗi phản hồi/exception/quyền điều khiển. `UnknownOutcome`: timeout/mất ACK sau khi có thể đã gửi lệnh; không tự retry chuyển động. SDK không tự reconnect/claim, không tạo thread heartbeat tự động. Xem [quy tắc chung](../docs/API.md).
+```python
+device = TunnelDevice.rtu("COM7", baud=19200, parity="E", unit=1)
+device = TunnelDevice.mqtt("broker.example.com", root="factory/tunnel01/v1")
+```
 
-## Cấu hình mẫu
+Constructor mới chưa kết nối. Dùng `connect()` hoặc `with device:`.
+`get_status()` đọc mới, không claim, không gia hạn lease và không reset bộ đếm.
 
-- [TCP](settings.tcp.example.json), [RTU](settings.rtu.example.json), [MQTT](mqtt_config.example.json).
-- Copy file mẫu thành file riêng, điền IP/COM/root/account thực tế. `mqtt_username` là tên trong **SDK config**; web firmware dùng key `mqtt_user`.
-- CLI: `python api/tunnel_api.py --settings api/settings.tcp.example.json` (chỉ đọc).
-- MQTT demo: `python api/mqtt_demo.py --config api/mqtt_config.example.json --samples 3`.
+## Sample code
 
-Thư mục [tunnel_sdk](tunnel_sdk/README.md) mô tả từng module. [examples](examples/README.md) chứa frame JSON mẫu; token/session/id phải lấy từ bo thật. [reference](reference/README.md) chỉ là tài liệu1.11 đối chiếu, không thay thế tài liệu hiện hành.
+- [TCP](example/read_tcp.py), [RTU](example/read_rtu.py), [MQTT](example/read_mqtt.py): chỉ đọc.
+- [Reader power](example/reader_power.py): claim, maintenance, heartbeat, đọc reply, cleanup.
+- [Cách chạy](example/README.md).
+
+## API reference
+
+- [Toàn bộ hàm và cách gọi](docs/API_REFERENCE.md)
+- [Trạng thái và lỗi](docs/STATUS_AND_ERRORS.md)
+- [Bắt đầu và cấu hình](docs/GETTING_STARTED.md)
+- [User Guide ba giao thức](docs/Tunnel_User_Guide_VI.pdf)
+- [Migration từ SDK cũ](docs/MIGRATION.md)
+
+Claim đưa máy về STOP/HOLD. Ứng dụng chủ động heartbeat khoảng 500 ms; lease 3000 ms.
+`accepted=True` là nhận lệnh, chưa phải hoàn tất. Reader cần reply đúng sequence;
+cơ khí cần theo dõi trạng thái. Không tự chạy lại sau `UnknownOutcome`.
+SDK không tự claim, heartbeat, reconnect hoặc retry; `close()` không gửi lệnh máy.
+
+## Development
+
+```console
+python -m pip install -e ".[all]"
+python -m unittest discover -s tests -v
+python -m pip install build
+python -m build
+```
+
+Test mặc định dùng thiết bị giả lập, không mở COM hay điều khiển bo thật.
+Xem [tests](tests/README.md) và [Changelog](CHANGELOG.md).
+
+## Issue feedback
+
+Gửi SDK/firmware version, transport, code tối thiểu và exception/ACK/state qua
+kênh bàn giao hoặc issue repository private. Xóa password khỏi log.
+
+## License
+
+Phân phối private theo thỏa thuận với chủ sở hữu. Xem [LICENSE](LICENSE).
+Thư viện bên thứ ba giữ giấy phép riêng.

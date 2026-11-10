@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tunnel-iot-python-sdk"
+version = "0.1.0"
+description = "Python SDK for Tunnel controllers over Modbus TCP, Modbus RTU and MQTT"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "LicenseRef-Proprietary"
+license-files = ["LICENSE"]
+dependencies = []
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Operating System :: OS Independent",
+  "Topic :: System :: Hardware :: Hardware Drivers",
+]
+
+[project.optional-dependencies]
+mqtt = ["paho-mqtt>=2.1,<3"]
+rtu = ["pyserial>=3.5,<4"]
+all = ["paho-mqtt>=2.1,<3", "pyserial>=3.5,<4"]
+
+[tool.setuptools]
+packages = ["tunnel_sdk"]
+py-modules = ["tunnel_api"]

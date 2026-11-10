@@ -1,0 +1,5 @@
+include README.md LICENSE CHANGELOG.md requirements.txt
+recursive-include docs *.md *.pdf
+recursive-include example *.py *.md
+recursive-include tests *.py *.md
+include settings.*.example.json mqtt_config.example.json

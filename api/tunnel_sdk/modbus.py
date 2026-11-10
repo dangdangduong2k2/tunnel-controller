@@ -135,6 +135,9 @@ class Modbus(Commands):
     def claim(self):
         return self._single(256, 1)
 
+    def has_control(self):
+        return self._read(3, 256, 1)[0] == 1
+
     def heartbeat(self):
         # Same Modbus register renews or claims. A timeout is still STOP-latched;
         # the application must never automatically reissue Reset after timeout.
