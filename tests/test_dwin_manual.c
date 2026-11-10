@@ -81,16 +81,16 @@ static void TestScanAfterReset(void) {
     DualRun(80U);
     Lcd(HMI_VP_BUTTON_SCAN, 1U);
     DualRun(100U);
-    assert(!ZK7182_IsScanActive()); /* IN2 remains live. */
-    assert(Tunnel_GetFault() == TUNNEL_FAULT_SENSOR_ORDER);
+    assert(ZK7182_IsScanActive()); /* Standalone RF ignores door position. */
+    assert(Tunnel_GetFault() == TUNNEL_FAULT_NONE);
 
     DualBoot();
     TunnelTest_SetSensor(SENSOR_SS2_PIN, 1U, 1U);
     DualRun(80U);
     Lcd(HMI_VP_BUTTON_SCAN, 1U);
     DualRun(100U);
-    assert(!ZK7182_IsScanActive());
-    assert(Tunnel_GetFault() == TUNNEL_FAULT_SENSOR_ORDER); /* IN7 never seen. */
+    assert(ZK7182_IsScanActive()); /* No home and IN7 never seen: RF only. */
+    assert(Tunnel_GetFault() == TUNNEL_FAULT_NONE);
 }
 
 static void TestConveyorTapToggle(void) {
@@ -177,9 +177,14 @@ static void TestNoBypassOfStopOrPcOwnership(void) {
     assert(DualRequest(0x22U, &off, 1U) == 0U);
     Lcd(HMI_VP_BUTTON_GATE, 0U);
     Lcd(HMI_VP_BUTTON_SCAN, 1U);
-    DualRun(10U);
-    CheckStopped();
+    DualRun(300U);
+    assert(ZK7182_IsScanActive()); /* A local explicit RF-only request is allowed. */
+    assert(!MotorPwm_IsRunning(STEP_DRIVER) && !MotorPwm_IsRunning(STEP2_DRIVER));
+    assert(!MotorPwm_IsRunning(CONVEYOR_DRIVER));
     assert(!Hmi_IsControlLocked());
+    Lcd(HMI_VP_BUTTON_SCAN, 1U);
+    DualRun(1200U);
+    assert(!ZK7182_IsScanActive() && Tunnel_GetState() == TUNNEL_STOPPED);
     Lcd(HMI_VP_BUTTON_RESET, 1U);
     DualRun(100U);
     Lcd(HMI_VP_BUTTON_GATE, 0U);

@@ -56,6 +56,8 @@ static uint8_t gate_homed;
  * IN7 can drop out after door 2 has stopped at a debounced closed limit. */
 static volatile uint8_t gate2_closed_confirmed;
 static uint8_t manual_scan_requested;
+static uint8_t manual_scan_only;
+static uint8_t rf_emergency_latched;
 static volatile uint8_t manual_scan_started;
 static uint8_t manual_scan_stopping;
 static uint32_t manual_scan_stop_tick;
@@ -757,6 +759,7 @@ static void Tunnel_BeginHome(TunnelHomeReason reason) {
         }
         MotorPwm_Init();
         emergency_latched = 0U;
+        rf_emergency_latched = 0U;
     }
     interrupt_state = __get_PRIMASK();
     __disable_irq();
@@ -899,6 +902,44 @@ static void Tunnel_ProcessRescanWait(uint32_t now) {
     }
 }
 
+/* Explicit stationary RF scan; never homes or starts a motor. Automatic parcel
+ * inventory still uses Tunnel_StartClosedGateScan and its door interlocks. */
+static uint8_t Tunnel_RequestManualScan(uint16_t run) {
+    uint8_t i;
+    if (run > 1U)
+        return 1U;
+    if (!run) {
+        if (manual_scan_only) {
+            manual_scan_requested = 0U;
+            ZK7182_PauseScan();
+        } else if (ZK7182_IsScanActive()) {
+            return 2U; /* OP4 must not take over an automatic parcel scan. */
+        }
+        return 0U;
+    }
+    if (pc_maintenance || rf_emergency_latched || tunnel_fault != TUNNEL_FAULT_NONE)
+        return 2U;
+#ifdef ARDUINO
+    if (EspEmergencyHeld())
+        return 3U;
+#endif
+    if (!Tunnel_ManualAllowed() && tunnel_state != TUNNEL_STOPPED &&
+        tunnel_state != TUNNEL_STARTUP_WAIT)
+        return 2U;
+    for (i = 0U; i < MOTOR_PWM_DRIVER_COUNT; ++i)
+        if (MotorPwm_IsRunning((MotorPwmId)i))
+            return 2U;
+    if (manual_scan_only)
+        return (manual_scan_requested && !manual_scan_stopping) ? 0U : 2U;
+    if (!ZK7182_IsReady())
+        return 4U;
+    manual_scan_only = 1U;
+    manual_scan_requested = 1U;
+    manual_scan_wait_tick = HAL_GetTick();
+    Tunnel_SetState(TUNNEL_MANUAL);
+    return 0U;
+}
+
 static void Tunnel_ProcessManual(uint32_t now) {
     if ((MotorPwm_IsRunning(CONVEYOR_DRIVER) != 0U) &&
         ((Tunnel_ReadSensor(TUNNEL_SENSOR_SS3) != 0U) ||
@@ -906,10 +947,10 @@ static void Tunnel_ProcessManual(uint32_t now) {
         MotorPwm_Stop(CONVEYOR_DRIVER);
     }
     if ((manual_scan_requested != 0U) && (manual_scan_started == 0U)) {
-        if (Tunnel_GateClosedForInventory() == 0U) {
-            manual_scan_requested = 0U;
-            tunnel_fault = TUNNEL_FAULT_SENSOR_ORDER;
-        } else if ((ZK7182_IsReady() != 0U) && (Tunnel_StartClosedGateScan() != 0U)) {
+        if ((ZK7182_IsReady() != 0U) &&
+            (ZK7182_StartScan(configured_scan_duration_ms) != 0U)) {
+            active_scan_duration_ms = configured_scan_duration_ms;
+            inventory_session_tick = HAL_GetTick();
             manual_scan_started = 1U;
             display_quantity = 0U;
         } else if ((now - manual_scan_wait_tick) >= TUNNEL_READER_READY_TIMEOUT_MS) {
@@ -944,7 +985,9 @@ static void Tunnel_ProcessManual(uint32_t now) {
     }
     if ((manual_scan_requested == 0U) && (manual_scan_started == 0U) &&
         (MotorPwm_IsRunning(CONVEYOR_DRIVER) == 0U) && (Tunnel_GatesRunning() == 0U)) {
-        Tunnel_SetState(TUNNEL_WAIT_REARM);
+        /* Finishing an isolated read must not arm AUTO on a sensor edge. */
+        Tunnel_SetState(manual_scan_only ? TUNNEL_STOPPED : TUNNEL_WAIT_REARM);
+        manual_scan_only = 0U;
     }
 }
 
@@ -964,6 +1007,11 @@ static void Tunnel_HandleHmiEvents(void) {
                 continue;
             }
         }
+        if (manual_scan_only && event.vp != HMI_VP_BUTTON_SCAN &&
+            event.vp != HMI_VP_BUTTON_EMERGENCY) {
+            g_debug.tunnel_hmi_ignored_count++;
+            continue;
+        }
         if ((event.vp == HMI_VP_BUTTON_RESET) || (event.vp == HMI_VP_BUTTON_EMERGENCY)) {
             pc_maintenance = 0U;
             pc_motion_owned = 0U;
@@ -978,6 +1026,11 @@ static void Tunnel_HandleHmiEvents(void) {
         if ((event.vp == HMI_VP_BUTTON_RESET) && (event.value == 1U)) {
             Tunnel_BeginHome(TUNNEL_HOME_RESET);
             return;
+        }
+        if ((event.vp == HMI_VP_BUTTON_SCAN) && (event.value == 1U)) {
+            if (Tunnel_RequestManualScan(manual_scan_requested ? 0U : 1U))
+                g_debug.tunnel_hmi_ignored_count++;
+            continue;
         }
         if (emergency_latched != 0U) {
             continue;
@@ -1022,20 +1075,6 @@ static void Tunnel_HandleHmiEvents(void) {
         if ((Tunnel_ManualAllowed() == 0U) &&
             !((tunnel_state == TUNNEL_STOPPED) && (gate_homed != 0U))) {
             g_debug.tunnel_hmi_ignored_count++;
-            continue;
-        }
-        if ((event.vp == HMI_VP_BUTTON_SCAN) && (event.value == 1U)) {
-            /* Both DWIN Scan buttons write the same value. Treat either as an
-               action event: each press toggles the MCU's requested scan state. */
-            if (tunnel_state != TUNNEL_MANUAL) {
-                Tunnel_SetState(TUNNEL_MANUAL);
-            }
-            manual_scan_requested = (manual_scan_requested == 0U) ? 1U : 0U;
-            if (manual_scan_requested != 0U) {
-                manual_scan_wait_tick = HAL_GetTick();
-            } else {
-                ZK7182_PauseScan();
-            }
             continue;
         }
         if ((event.vp == HMI_VP_BUTTON_CONVEYOR) && (event.value == 1U)) {
@@ -1127,11 +1166,11 @@ static void Tunnel_UpdateHmi(uint32_t now) {
     conveyor = MotorPwm_IsRunning(CONVEYOR_DRIVER);
     gate = Tunnel_GatesRunning();
     scan = ((ZK7182_IsScanActive() != 0U) && (g_debug.tunnel_scan_paused == 0U)) ? 1U : 0U;
-    auto_mode = ((tunnel_mode == TUNNEL_MODE_AUTO) && (tunnel_state != TUNNEL_STOPPED) &&
+    auto_mode = (!manual_scan_only && (tunnel_mode == TUNNEL_MODE_AUTO) && (tunnel_state != TUNNEL_STOPPED) &&
                  (tunnel_state != TUNNEL_RETURN_GATE_TO_SS2))
                     ? 1U
                     : 0U;
-    semi_mode = ((tunnel_mode == TUNNEL_MODE_SEMI_AUTO) && (tunnel_state != TUNNEL_STOPPED) &&
+    semi_mode = (!manual_scan_only && (tunnel_mode == TUNNEL_MODE_SEMI_AUTO) && (tunnel_state != TUNNEL_STOPPED) &&
                  (tunnel_state != TUNNEL_RETURN_GATE_TO_SS2))
                     ? 1U
                     : 0U;
@@ -1227,6 +1266,8 @@ void Tunnel_Init(void) {
     /* Let LCD/USB initialize without blocking their processing. Then require
        a clean all-HIGH baseline before an SS1 edge can start motion. */
     emergency_latched = 0U;
+    rf_emergency_latched = 0U;
+    manual_scan_only = 0U;
     conveyor_speed_level = SpeedStore_Load();
     configured_scan_duration_ms = TUNNEL_INVENTORY_DURATION_MS;
     active_scan_duration_ms = TUNNEL_INVENTORY_DURATION_MS;
@@ -1560,6 +1601,9 @@ uint8_t Tunnel_GetStopFlags(void) {
            (Hmi_IsControlLocked() ? 16U : 0U);
 }
 static void Tunnel_StopLatched(uint8_t reason, uint8_t release) {
+    if (reason == STOP_EMERGENCY)
+        rf_emergency_latched = 1U;
+    manual_scan_only = 0U;
     Tunnel_StopTransferMotion();
     if (release)
         MotorPwm_EmergencyStop();
@@ -1618,6 +1662,14 @@ uint8_t Tunnel_RemoteCommand(uint8_t command, uint16_t value) {
             Tunnel_StopForSafety(STOP_PC_DISCONNECT);
         return 0U;
     }
+    if (command == 0x12U) {
+        uint8_t result = Tunnel_RequestManualScan(value);
+        if (!result && value)
+            pc_motion_owned = 1U; /* RF also requires the owner's lease. */
+        return result;
+    }
+    if (manual_scan_only)
+        return 2U; /* Finish RF/drain before Reset, motion, mode or settings. */
     if (command == 0x18U) {
 #ifdef ARDUINO
         if (EspEmergencyHeld() != 0U) {
@@ -1734,24 +1786,6 @@ uint8_t Tunnel_RemoteCommand(uint8_t command, uint16_t value) {
         Hmi_FlushEvents();
         pc_motion_owned = 1U;
         Tunnel_StartOpeningStepState(TUNNEL_MODE_OPEN_GATE);
-        return 0U;
-    }
-    if (command == 0x12U) {
-        if ((value != 0U) && (Tunnel_GateClosedForInventory() == 0U)) {
-            return 3U;
-        }
-        if (tunnel_state != TUNNEL_MANUAL) {
-            Tunnel_SetState(TUNNEL_MANUAL);
-        }
-        if (manual_scan_requested != (uint8_t)value) {
-            manual_scan_requested = (uint8_t)value;
-            if (value != 0U) {
-                manual_scan_wait_tick = HAL_GetTick();
-            } else {
-                ZK7182_PauseScan();
-            }
-        }
-        pc_motion_owned = 1U;
         return 0U;
     }
     if (value == 0U) {

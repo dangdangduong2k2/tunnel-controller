@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.2
+
+- Added `example/scan_tags.py`: independent RF scan without homing or motor commands,
+  firmware 1.12.1 version check, explicit claim/heartbeat/STOP/release.
+- Documented the updated OP4 behavior; no register addresses or wire OPs changed.
+
+
 ## 0.1.1
 
 - One persistent console covers all 19 operations over TCP, RTU and MQTT,

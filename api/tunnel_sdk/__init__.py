@@ -8,7 +8,7 @@ from .modbus import Modbus
 from .mqtt import Mqtt
 from .device import TunnelDevice
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 
 
 def from_settings(settings):

@@ -1,4 +1,16 @@
-# SDK 0.1.1 validation - 11/11/2026
+# SDK validation - 11/11/2026
+
+## 0.1.2 / firmware1.12.1
+
+- 19 SDK unit tests pass; includes independent scan workflow with no Reset,
+  maintenance or motor calls, rejection of old firmware/foreign owner, and cleanup
+  after reader failure. Original 19-operation mapping remains unchanged.
+- 5 failure tests, 17 localhost TCP/simulated RTU integration assertions and
+  MQTT localhost tests pass. Firmware native suites:22 pass, including stationary
+  RF/lease/Emergency and unchanged AUTO/SEMI door interlocks.
+- Added `example/scan_tags.py`; the console still supports `scan 1` / `scan 0`.
+
+## Previous 0.1.1 validation
 
 - Built sdist and wheel from sdist; installed wheel into a new Python 3.12 venv.
   All 16 SDK tests passed against that installed wheel with isolated Python and
@@ -27,3 +39,11 @@
 No physical machine, COM port or remote broker was used during these checks.
 The workflow includes Python 3.10-3.13 on Windows/Linux, but that remote matrix
 has not been run here. The local verification used Windows/Python 3.12.
+
+## Kiểm tra trên bo ngày 11/11/2026
+
+Đã nạp và xác nhận firmware 1.12.1. Scan được chấp nhận khi chưa Home;
+không gửi Reset hoặc lệnh motor. ANT1 bật, công suất 22 dBm.
+Hai lần thử TCP vẫn có EPC = 0 và có lỗi đóng kết nối; sau đó bo báo STOPPED,
+owner = 0, activity = 0, fault = 0. Vì vậy phần đọc tag thật và độ ổn định
+kết nối trong Scan **chưa được xác nhận đạt**. Không tự lặp lệnh khi mất ACK.

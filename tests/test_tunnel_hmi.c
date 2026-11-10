@@ -424,15 +424,8 @@ static void TestManualScanToggle(void) {
 
     QueueAndPump(TEST_VP_SCAN, 1U);
     AdvanceAndProcess(20U);
-    CHECK_U32("manual scan rejected while gate is open", 0U, tunnel_test_reader.start_calls);
-    CHECK_U32("open gate reports sensor condition", TUNNEL_FAULT_SENSOR_ORDER, Tunnel_GetFault());
-    TunnelTest_SetPairedSensor(SENSOR_SS2_PIN, 1U, 1U);
-    QueueAndPump(TEST_VP_SCAN, 1U);
-    AdvanceAndProcess(10U);
-    CHECK_U32("raw SS2 alone cannot start manual scan", 0U, tunnel_test_reader.start_calls);
-    AdvanceAndProcess(SENSOR_DEBOUNCE_MS + 10U);
-
-    QueueAndPump(TEST_VP_SCAN, 1U);
+    CHECK_U32("standalone scan starts with open gates", 1U, tunnel_test_reader.start_calls);
+    CHECK_U32("independent scan has no sensor fault", TUNNEL_FAULT_NONE, Tunnel_GetFault());
     if (WaitForState(TUNNEL_MANUAL, 100U) == 0U) {
         return;
     }
@@ -466,15 +459,19 @@ static void TestGateReopensWhileWaitingForReader(void) {
     SetSensorDebounced(SENSOR_SS2_PIN, 1U);
     tunnel_test_reader.ready = 0U;
     QueueAndPump(TEST_VP_SCAN, 1U);
-    CHECK_U32("closed gate waits for reader", TUNNEL_MANUAL, Tunnel_GetState());
+    CHECK_U32("unready reader leaves machine idle", TUNNEL_WAIT_SS1_LOW, Tunnel_GetState());
     CHECK_U32("no request before reader ready", 0U, tunnel_test_reader.start_calls);
-    /* Physical SS2 goes HIGH just as the reader becomes ready. The old
-       debounced LOW must not authorize a scan during the next 50 ms. */
+    /* A rejected request is not queued to run when the reader becomes ready. */
     TunnelTest_SetPairedSensor(SENSOR_SS2_PIN, 0U, 1U);
     tunnel_test_reader.ready = 1U;
     AdvanceAndProcess(5U);
-    CHECK_U32("stale closed state cannot start reader", 0U, tunnel_test_reader.start_calls);
-    CHECK_U32("gate opening rejects pending scan", TUNNEL_FAULT_SENSOR_ORDER, Tunnel_GetFault());
+    CHECK_U32("reader recovery cannot replay old request", 0U, tunnel_test_reader.start_calls);
+    CHECK_U32("gate position is irrelevant to isolated RF", TUNNEL_FAULT_NONE, Tunnel_GetFault());
+    QueueAndPump(TEST_VP_SCAN, 1U);
+    AdvanceAndProcess(20U);
+    CHECK_U32("fresh request scans with open gates", 1U, tunnel_test_reader.start_calls);
+    CHECK_U32("standalone RF never starts belt", 0U,
+              tunnel_test_motors[CONVEYOR_DRIVER].start_continuous_calls);
 }
 
 static void TestLiveHmiDetectionRepublishesState(void) {

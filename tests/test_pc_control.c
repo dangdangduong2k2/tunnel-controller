@@ -145,7 +145,11 @@ static void TestFramingAndInterlocks(void) {
     PcBoot();
     assert(Request(1U, NULL, 0U) == 0U);
     assert(reply_size == 49U && reply[7] == 8U && reply[19] == 1U && reply[21] == 41U);
-    assert(One(0x12U, 1U) == 3U);    /* Open gate cannot scan. */
+    assert(One(0x12U, 1U) == 0U);    /* Standalone RF needs no homing. */
+    Run(500U);
+    assert(ZK7182_GetUniqueEpcCount() > 0U);
+    assert(One(0x12U, 0U) == 0U);
+    Run(1200U);
     assert(One(0x21U, 0x21U) == 2U); /* Bridge requires maintenance. */
     sequence++;
     len = MakeRequest(bytes, 0x11U, &arg, 1U);

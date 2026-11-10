@@ -220,7 +220,75 @@ static void TestSessionBusy(void) {
     puts("PASS session BUSY: motion blocked in maintenance, pending Set not queued, "
          "owner/reply preserved, status/heartbeat/STOP available");
 }
+static void TestStandaloneRf(void) {
+    unsigned i;
+    uint32_t sessions;
+    MbBoot(); /* Claim latches STOP, without homing. */
+    assert(!(Tunnel_GetStopFlags() & 2U));
+    MbCommand(1, 4, 1, 0, 0, 0, 0);
+    DualRun(500);
+    assert(MbTest_Reg(19) == 0 && ZK7182_IsScanActive() && rf_on);
+    assert(ZK7182_GetUniqueEpcCount() > 0 && !(Tunnel_GetStopFlags() & 2U));
+    for (i = 0; i < MOTOR_PWM_DRIVER_COUNT; ++i) {
+        assert(!MotorPwm_IsRunning((MotorPwmId)i));
+        assert(tunnel_test_motors[i].start_continuous_calls == 0);
+        assert(tunnel_test_motors[i].start_profile_calls == 0);
+    }
+    sessions = g_debug.scan_session_count;
+    MbCommand(2, 4, 1, 0, 0, 0, 0);
+    DualRun(10);
+    assert(g_debug.scan_session_count == sessions); /* ON while ON is idempotent. */
+    MbCommand(3, 1, 0, 0, 0, 0, 0); /* Reset cannot start homing during RF. */
+    DualRun(10);
+    assert(MbTest_Reg(19) == 2 && ZK7182_IsScanActive());
+    MbCommand(4, 3, 1, 0, 0, 0, 0);
+    DualRun(10);
+    assert(MbTest_Reg(19) == 2 && !MotorPwm_IsRunning(CONVEYOR_DRIVER));
+    MbCommand(5, 9, 1, 0, 0, 0, 0);
+    DualRun(10);
+    assert(MbTest_Reg(19) == 2 && !Tunnel_IsPcMaintenance());
+    MbCommand(6, 4, 0, 0, 0, 0, 0);
+    DualRun(1200);
+    assert(!ZK7182_IsScanActive() && !rf_on && Tunnel_GetState() == TUNNEL_STOPPED);
+    assert(ZK7182_GetUniqueEpcCount() > 0); /* Keep result after STOP. */
+    MbCommand(7, 4, 1, 0, 0, 0, 0);
+    DualRun(300);
+    assert(ZK7182_IsScanActive());
+    /* Sensor edges and the RF deadline must not arm conveyor AUTO. */
+    TunnelTest_SetSensor(SENSOR_SS1_PIN, 1U, 1U);
+    for (i = 0; i < 64; ++i) {
+        MbSingle(1, 256, 1);
+        DualRun(500);
+        assert(!MotorPwm_IsRunning(CONVEYOR_DRIVER));
+        assert(!MotorPwm_IsRunning(STEP_DRIVER) && !MotorPwm_IsRunning(STEP2_DRIVER));
+    }
+    assert(!ZK7182_IsScanActive() && Tunnel_GetState() == TUNNEL_STOPPED);
+    MbCommand(8, 4, 1, 0, 0, 0, 0);
+    DualRun(300);
+    assert(ZK7182_IsScanActive());
+    DualRun(3100); /* Missing heartbeat stops RF, never resumes it. */
+    assert(!ZK7182_IsScanActive() && MbTest_Reg(16) == 0);
+    DualRun(1200);
+    MbSingle(1, 256, 1);
+    DualRun(10);
+    MbCommand(9, 4, 1, 0, 0, 0, 0);
+    DualRun(300);
+    assert(ZK7182_IsScanActive());
+    MbSingle(2, 257, 1);
+    DualRun(1200);
+    assert(!ZK7182_IsScanActive());
+    MbSingle(1, 256, 0);
+    DualRun(10);
+    MbSingle(1, 256, 1);
+    DualRun(10);
+    MbCommand(10, 4, 1, 0, 0, 0, 0);
+    DualRun(10);
+    assert(MbTest_Reg(19) == 2 && !ZK7182_IsScanActive()); /* Claim cannot clear Emergency. */
+    puts("PASS standalone RF: no home/motor, EPC, BUSY motion/settings, stop/deadline, "
+         "no AUTO after scan, lease and persistent Emergency protection");
+}
 int main(void) {
+    TestStandaloneRf();
     TestSessionBusy();
     TestModbusOnly();
     TestModbusReader();

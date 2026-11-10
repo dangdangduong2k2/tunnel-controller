@@ -134,7 +134,7 @@ Chọn **một** cách gọi cho một yêu cầu. Inventory RFID thủ công: 0
 
 Tham số wire: `run`: int 0..1.
 
-0=dừng,1=bắt đầu; bắt đầu cần cửa đóng và trạng thái phù hợp. Xem epc_count và scan_result.
+0=dừng,1=bắt đầu. Từ firmware1.12.1, Scan thủ công độc lập, không cần homing/cửa đóng. Claim → set_scan(1) → đọc epc_count/total_reads → set_scan(0) → release; duy trì heartbeat500ms. Không vào maintenance, không gọi Reset. Mọi motor phải đứng yên; chặn khi fault/Emergency hoặc đang ở chu trình AUTO/SEMI. Hết scan giữ STOPPED, không tự chạy AUTO. Firmware1.12.0 trở về trước vẫn yêu cầu cửa đóng. Ví dụ đầy đủ: [scan_tags.py](../example/scan_tags.py).
 
 
 ### OP5: mode

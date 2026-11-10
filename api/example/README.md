@@ -23,6 +23,24 @@ Chọn một lệnh phù hợp. Claim làm máy STOP/HOLD. Script duy trì heart
 reply, thoát maintenance/release khi có thể. Không ghi công suất RF.
 `--help` không kết nối thiết bị. [Toàn bộ API](../docs/API_REFERENCE.md).
 
+## Scan tag không cần homing (firmware 1.12.1+)
+
+```console
+python example/scan_tags.py --transport tcp --host 192.168.102.11 --seconds 8
+python example/scan_tags.py --transport rtu --serial-port COM7 --baud 9600 --seconds 8
+python example/scan_tags.py --transport mqtt --host broker.emqx.io --root tunnel/test/board-7c93a1/v1 --seconds 8
+```
+
+Chọn đúng giao thức và cấu hình thực tế; COM của USB-RS485 khác COM nạp ESP32.
+Script claim, gửi Scan ON, giữ heartbeat, in số EPC/lượt đọc, Scan OFF, chờ dừng RF
+rồi release. Không Reset, không maintenance, không lệnh motor. Dùng `scan 1` /
+`scan 0` trong console cũng tương đương. Firmware chặn chuyển động/cài đặt trong
+khi scan; Scan bị từ chối nếu motor đang chạy. AUTO/SEMI vẫn giữ liên động cửa.
+
+Broker công cộng có thể quá chậm cho điều khiển: code3 là token quá1500ms, khác
+BUSY. Không nới watchdog hoặc retry mù; dùng TCP nội bộ hoặc broker LAN phù hợp.
+Firmware cũ chưa hỗ trợ nên script từ chối trước claim.
+
 ## Console đủ 19 lệnh cho cả ba giao thức
 
 [device_console.py](device_console.py) giữ **một kết nối và một phiên claim** qua
@@ -49,7 +67,7 @@ Release làm STOP/HOLD. Nếu release thất bại, báo lỗi; không giấu b�
 | `reset` | `reset()` / 1 | Reset/homing; có thể làm cửa chuyển động. Chỉ khi chủ động yêu cầu. |
 | `gate 1` / `gate 0` | `set_gate(close)` / 2 | 1 đóng/homing, 0 mở; cần điều kiện cơ khí hợp lệ. |
 | `belt 1` / `belt 0` | `set_belt(run)` / 3 | Chạy/dừng băng tải; không vượt interlock. |
-| `scan 1` / `scan 0` | `set_scan(run)` / 4 | Bắt đầu/dừng scan thủ công; cửa phải phù hợp. |
+| `scan 1` / `scan 0` | `set_scan(run)` / 4 | Bắt đầu/dừng RF độc lập; FW1.12.1 không cần home, mọi motor phải dừng. |
 | `mode 0` / `mode 1` | `set_mode(mode)` / 5 | AUTO/SEMI; chỉ trạng thái cho phép, có thể mở cửa. |
 | `confirm` | `confirm()` / 6 | Xác nhận kết quả tại state9 trong cùng phiên. |
 | `rescan` | `rescan()` / 7 | Quét lại tại state9 trong cùng phiên. |
