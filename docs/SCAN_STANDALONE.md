@@ -68,3 +68,8 @@ STOPPED, owner = 0, activity = 0, fault = 0, EPC = 2.
 Lần thử đầu vẫn gặp lỗi đóng TCP giữa phiên (đã đọc 2 EPC); hai lần tiếp theo
 không tái hiện. Chưa xác định nguyên nhân TCP gián đoạn, chưa coi lỗi này đã sửa.
 SDK giữ lỗi gốc nếu cleanup cũng lỗi, không tự retry hoặc claim lại.
+
+## Cập nhật MQTT từ 1.12.3
+
+Thời hạn 1500/3000 ms mô tả bản trước. Bản 1.12.3 dùng token 5000 ms,
+lease MQTT 10000 ms; xem [giới hạn MQTT](MQTT_TIMING.md).

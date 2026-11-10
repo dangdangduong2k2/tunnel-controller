@@ -161,7 +161,7 @@ static void tests() {
     assert(core.active());
     b = beatCount;
     published.clear();
-    for (int i = 0; i < 16; i++) {
+    for (int i = 0; i < 51; i++) {
         fakeTime += 200;
         inject("get", get);
         cycle();

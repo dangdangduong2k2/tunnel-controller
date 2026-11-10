@@ -9,7 +9,7 @@ from .status import decode_status
 
 
 class Mqtt(Commands):
-    def __init__(self, host, port=1883, username="", password="", root="tunnel/01/v1", timeout=3):
+    def __init__(self, host, port=1883, username="", password="", root="tunnel/01/v1", timeout=5):
         import paho.mqtt.client as mqtt
 
         if not host:
@@ -69,6 +69,18 @@ class Mqtt(Commands):
 
     def _fresh(self):
         return self.connected and self.state is not None and time.monotonic() - self.received < 1.5
+
+    def _cached_state(self):
+        # Only firmware 1.12.3+ has the 5-second token / 10-second MQTT lease.
+        # Bound both cache time and full GET flight time; never fabricate seen_ms.
+        now = time.monotonic()
+        return (
+            self.state is not None
+            and self.state.get("registers", [0, 0])[1] >= 1123
+            and self._fresh()
+            and now - self.received < 1.0
+            and now - getattr(self, "read_started", self.received) < 3.0
+        )
 
     def _message(self, client, userdata, message):
         if message.retain or len(message.payload) > 4096:
@@ -133,6 +145,7 @@ class Mqtt(Commands):
                     raise ProtocolError("Read ID exhausted; create a new client")
                 request = dict(client=self.client_id, id=self.read_sequence)
                 self.read_pending = self.read_sequence, None
+                self.read_started = time.monotonic()
             try:
                 sent = self.client.publish(
                     self.root + "/get",
@@ -165,7 +178,8 @@ class Mqtt(Commands):
 
     def _send(self, action, op=None, args=(), method=None, params=None):
         with self.lock:
-            self.status()  # Fresh token for every control request, without renewing the lease.
+            if not self._cached_state():
+                self.status()  # Read does not renew ownership; no retry of commands.
             with self.condition:
                 if not self._fresh():
                     raise ProtocolError("No fresh MQTT state")
@@ -205,6 +219,8 @@ class Mqtt(Commands):
                             )
                         self.condition.wait(left)
                     ack = self.pending[1]
+                if ack["code"] or ack["exception"]:
+                    self.state = None
                 if ack["exception"] == 6 or ack["code"] == 5:
                     raise BusyError(
                         "BUSY: MQTT ownership/reader rejection",
@@ -226,17 +242,23 @@ class Mqtt(Commands):
                         ) from exc
                     if state["owner_client"] != self.client_id or state["owner"] != 6:
                         raise UnknownOutcome("Claim ACK received but ownership is not confirmed")
+                if action in ("release", "stop", "emergency"):
+                    self.state = None
                 return ack
             finally:
                 with self.condition:
+                    if self.pending and self.pending[1] is None:
+                        self.state = None  # Unknown outcome must not reuse cached ownership.
                     self.pending = None
 
     def claim(self):
         return self._send("claim")
 
     def has_control(self):
-        state = self.status()
-        return state["owner"] == 6 and state["owner_client"] == self.client_id
+        with self.lock:
+            if not self._cached_state():
+                self.status()
+            return self.state["registers"][16] == 6 and self.state["owner_client"] == self.client_id
 
     def heartbeat(self):
         return self._send("heartbeat")
@@ -262,4 +284,4 @@ class Mqtt(Commands):
     def close(self):
         self.client.disconnect()
         self.client.loop_stop()
-        # No hidden command on close. MQTT ownership expires <=3 s after last heartbeat.
+        # No hidden command on close. MQTT ownership expires <=10 s on firmware 1.12.3+ (3 s on older firmware) after last heartbeat.

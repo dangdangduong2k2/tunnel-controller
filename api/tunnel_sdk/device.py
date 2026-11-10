@@ -21,7 +21,7 @@ class TunnelDevice:
     def __init__(self, transport, **settings):
         if transport not in ("tcp", "rtu", "mqtt"):
             raise ValueError("transport must be tcp, rtu or mqtt")
-        timeout = settings.get("timeout", 1.0)
+        timeout = settings.get("timeout", 5.0 if transport == "mqtt" else 1.0)
         if (
             isinstance(timeout, bool)
             or not isinstance(timeout, (int, float))
@@ -51,7 +51,7 @@ class TunnelDevice:
         )
 
     @classmethod
-    def mqtt(cls, host, *, port=1883, username="", password="", root="tunnel/01/v1", timeout=1.0):
+    def mqtt(cls, host, *, port=1883, username="", password="", root="tunnel/01/v1", timeout=5.0):
         return cls(
             "mqtt",
             host=host,

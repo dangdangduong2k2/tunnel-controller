@@ -37,7 +37,7 @@ rồi release. Không Reset, không maintenance, không lệnh motor. Dùng `sca
 `scan 0` trong console cũng tương đương. Firmware chặn chuyển động/cài đặt trong
 khi scan; Scan bị từ chối nếu motor đang chạy. AUTO/SEMI vẫn giữ liên động cửa.
 
-Broker công cộng có thể quá chậm cho điều khiển: code3 là token quá1500ms, khác
+Broker công cộng có thể quá chậm cho điều khiển: code3 là token quá 5000 ms từ firmware 1.12.3 (bản cũ: 1500 ms), khác
 BUSY. Không nới watchdog hoặc retry mù; dùng TCP nội bộ hoặc broker LAN phù hợp.
 Firmware cũ chưa hỗ trợ nên script từ chối trước claim.
 
@@ -57,7 +57,7 @@ MQTT lấy tài khoản từ hai biến môi trường như các ví dụ trên.
 bằng cấu hình thật. Mở console **chưa claim và chưa chạy máy**.
 
 Gõ `help` để xem cú pháp. Gõ `claim` khi chủ động muốn giữ quyền: thao tác này
-STOP/HOLD. Console gửi heartbeat500ms sau claim, kể cả khi chờ nhập bàn phím hoặc
+STOP/HOLD. Console gửi heartbeat sau claim: MQTT khoảng 1000 ms, TCP/RTU 500 ms, kể cả khi chờ nhập bàn phím hoặc
 chờ reader. Đây là logic của ví dụ, SDK không tự heartbeat. Gõ `quit` hoặc Ctrl+C
 để kết thúc: ví dụ ngừng heartbeat, kiểm tra quyền rồi release nếu vẫn sở hữu.
 Release làm STOP/HOLD. Nếu release thất bại, báo lỗi; không giấu bằng thông báo OK.

@@ -1,10 +1,10 @@
-# Tunnel Controller 1.12.2
+# Tunnel Controller 1.12.3
 
 Source ESP32-S3 cho bo Tunnel: điều khiển hai cửa, băng tải, reader ZK-7182M, màn DWIN; PLC/HMI sử dụng Modbus TCP hoặc Modbus RTU, phần mềm sử dụng MQTT. Ba giao thức dùng chung trạng thái máy và quyền điều khiển.
 
 Bản này chuẩn hóa từ 1.11.0: tách module, tách SDK, gom contract, thêm MQTT theo tên và tài liệu. Giữ nguyên thuật toán chu trình, map thanh ghi, OP và cấu hình NVS. Đây là source để build/kiểm thử; không tự nạp vào bo khi chạy build hoặc test.
 
-Bản 1.12.2: **Scan thủ công độc lập, không cần homing**, không chạy motor. Chu trình AUTO/SEMI vẫn kiểm tra cửa như trước. Xem [hướng dẫn Scan độc lập](docs/SCAN_STANDALONE.md).
+Bản 1.12.3: **Scan thủ công độc lập, không cần homing**, không chạy motor. Chu trình AUTO/SEMI vẫn kiểm tra cửa như trước. Xem [hướng dẫn Scan độc lập](docs/SCAN_STANDALONE.md).
 
 ## SDK theo giao thức
 
@@ -67,7 +67,7 @@ Tạo client: `TunnelDevice.mqtt("broker.example.com", root="factory/tunnel01/v1
 
 SDK Python hiện cài được bằng `python -m pip install "./api[all]"`.
 API `TunnelDevice` có đủ 19 lệnh; xem [cách gọi từng hàm](api/docs/API_REFERENCE.md).
-SDK **0.1.3** có [console đủ 19 lệnh](api/example/README.md) dùng chung RTU/TCP/MQTT,
+SDK **0.1.4** có [console đủ 19 lệnh](api/example/README.md) dùng chung RTU/TCP/MQTT,
 giữ phiên Confirm/Rescan, kiểm tra readback và báo [BUSY](api/docs/STATUS_AND_ERRORS.md#busy-khi-chưa-thể-nhận-lệnh-trong-phiên-hiện-tại)
 khi bo từ chối. Firmware đã có mã BUSY; SDK không tự retry hay giành quyền.
 Xuất bộ SDK độc lập: `python tools/export_sdk.py <thu-muc-moi>` rồi build trong thư mục đó.
@@ -106,3 +106,5 @@ Xuất bộ SDK độc lập: `python tools/export_sdk.py <thu-muc-moi>` rồi b
 - [Changelog](CHANGELOG.md)
 
 Mỗi thư mục thành phần có README nêu trách nhiệm, entry point, phụ thuộc, quy tắc khi sửa và bài test liên quan. Public header là định nghĩa hàm chính xác; không sửa các file có dòng `Generated` bằng tay.
+
+[MQTT timing](docs/MQTT_TIMING.md)

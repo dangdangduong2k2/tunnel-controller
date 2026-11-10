@@ -65,6 +65,9 @@ extern "C" void EspModbusFence(void) {
     pendingStop = false;
     head = tail;
 }
+extern "C" uint32_t EspModbusControlLeaseMs(void) {
+    return core.controlLeaseMs();
+}
 extern "C" uint8_t EspModbusActive(void) {
     return core.active();
 }

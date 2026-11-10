@@ -162,7 +162,7 @@ try:
     for j in jobs:
         j.join(3)
     assert set(answers) == {"a", "b"} and all(
-        s["unique_epcs"] == 7 and s["firmware"] == 1122 for s in answers.values()
+        s["unique_epcs"] == 7 and s["firmware"] == 1123 for s in answers.values()
     )
     assert a.state["epc_count"] == 7 and a.state["machine_state"] == a.state["registers"][2]
     assert a.state["request_client"] == a.client_id and b.state["request_client"] == b.client_id
@@ -228,7 +228,7 @@ try:
     print("PASS public MQTT API uses numeric 1.11-compatible OPs and reader cleanup", flush=True)
 
     assert a.claim()["accepted"]
-    deadline = time.monotonic() + 3.2
+    deadline = time.monotonic() + 10.2
     while time.monotonic() < deadline:
         b.status()
         time.sleep(0.07)

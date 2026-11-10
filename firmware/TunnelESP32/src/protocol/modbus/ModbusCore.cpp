@@ -9,13 +9,16 @@ static void put16(uint8_t *p, uint16_t v) {
     p[0] = uint8_t(v >> 8);
     p[1] = uint8_t(v);
 }
+uint32_t Core::controlLeaseMs() const {
+    return controller == MQTT ? TUNNEL_MQTT_CONTROL_LEASE_MS : TUNNEL_CONTROL_LEASE_MS;
+}
 void Core::touch() {
     leaseAt = clock;
     io.heartbeat();
 }
 void Core::tick(uint32_t now) {
     clock = now;
-    if (controller && uint32_t(clock - leaseAt) >= TUNNEL_CONTROL_LEASE_MS) {
+    if (controller && uint32_t(clock - leaseAt) >= controlLeaseMs()) {
         controller = 0;
         io.stop(false);
     }
@@ -60,7 +63,7 @@ uint16_t Core::read(uint8_t peer, uint16_t address) {
     if (address == 16)
         return controller;
     if (address == 17)
-        return controller ? uint16_t(TUNNEL_CONTROL_LEASE_MS - uint32_t(clock - leaseAt)) : 0;
+        return controller ? uint16_t(controlLeaseMs() - uint32_t(clock - leaseAt)) : 0;
     if (address == 18)
         return lastSequence;
     if (address == 19)

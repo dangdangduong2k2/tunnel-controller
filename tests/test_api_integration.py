@@ -114,7 +114,7 @@ def main():
     try:
         tcp_client = Modbus(host="127.0.0.1", port=tcp.server_address[1])
         clients.append(tcp_client)
-        check(tcp_client.status()["firmware"] == 1122, "TCP reads current firmware")
+        check(tcp_client.status()["firmware"] == 1123, "TCP reads current firmware")
         check(int(native.call("N")) == 0, "Connecting and reading sends no machine command")
         check(tcp_client.claim()["accepted"], "TCP explicit claim")
         check(
@@ -187,7 +187,7 @@ def main():
         with patch("serial.Serial", SerialIO):
             rtu = Modbus(serial_port="SIMULATED")
             clients.append(rtu)
-            check(rtu.status()["firmware"] == 1122, "RTU framing/CRC and fragmented serial reads")
+            check(rtu.status()["firmware"] == 1123, "RTU framing/CRC and fragmented serial reads")
             rtu.claim()
             try:
                 tcp_client.claim()

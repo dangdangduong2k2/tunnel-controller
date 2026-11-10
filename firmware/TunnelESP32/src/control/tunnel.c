@@ -12,6 +12,13 @@
 #include "../platform/esp32/EspPlatform.h"
 #endif
 
+#if defined(ARDUINO) || defined(TUNNEL_MODBUS_TEST)
+#include "../platform/esp32/EspModbus.h"
+#define PC_LEASE_MS EspModbusControlLeaseMs()
+#else
+#define PC_LEASE_MS TUNNEL_CONTROL_LEASE_MS
+#endif
+
 #define TUNNEL_PROCESS_PERIOD_MS 5UL
 
 typedef enum {
@@ -1300,7 +1307,7 @@ void Tunnel_Tick1ms(void) {
     uint32_t interrupt_state;
 
     if ((pc_motion_owned || pc_supervised || pc_maintenance) &&
-        ((HAL_GetTick() - pc_heartbeat_tick) >= TUNNEL_CONTROL_LEASE_MS)) {
+        ((HAL_GetTick() - pc_heartbeat_tick) >= PC_LEASE_MS)) {
         Tunnel_StopGates();
         MotorPwm_Stop(CONVEYOR_DRIVER);
         ZK7182_PauseScan();

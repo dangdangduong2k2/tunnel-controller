@@ -117,9 +117,11 @@ class Console:
     error; it never reacquires control. Open a new console after diagnosing it.
     """
 
-    def __init__(self, device, *, heartbeat_interval=0.5, reader_timeout=3.0):
+    def __init__(self, device, *, heartbeat_interval=None, reader_timeout=3.0):
         self.device = device
         self.interval = heartbeat_interval
+        if self.interval is None:
+            self.interval = 1.0 if getattr(device, "transport", None) == "mqtt" else 0.5
         self.reader_timeout = reader_timeout
         self.claimed = False
         self.failure = None

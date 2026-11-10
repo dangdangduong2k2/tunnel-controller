@@ -9,7 +9,7 @@ Chọn đúng giao thức đang dùng để xem cách kết nối và **toàn b�
 
 Cả ba giao thức hỗ trợ đủ19 OP hiện có của firmware. Tên hàm Python giống nhau;
 kết nối, cách truyền lệnh và cách quản lý phiên được ghi riêng ở từng mục.
-SDK 0.1.3, Python 3.10+. Modbus dùng map từ firmware 1.10.2; MQTT cần firmware 1.11.0+.
+SDK 0.1.4, Python 3.10+. Modbus dùng map từ firmware 1.10.2; MQTT cần firmware 1.11.0+.
 
 Ví dụ chạy đủ **19 lệnh trên cả RTU, TCP/IP và MQTT**: [device_console.py](example/device_console.py).
 Xem [bảng lệnh và các tình huống](example/README.md): giữ phiên Confirm/Rescan, cài
@@ -288,7 +288,7 @@ Ví dụ này không claim. Không cần tài khoản Tuya hoặc cloud riêng c
 | `mqtt.get_functions()` | Danh mục19 OP và tham số của SDK; không truy cập bo. |
 | `mqtt.claim()` | ACK; lấy quyền và STOP/HOLD máy. |
 | `mqtt.has_control()` | bool: đúng client này có quyền hay không; không gia hạn lease. |
-| `mqtt.heartbeat()` | ACK; chủ động gọi khoảng500 ms để giữ quyền. |
+| `mqtt.heartbeat()` | ACK; chủ động gọi khoảng1000 ms để giữ quyền. |
 | `mqtt.release()` | ACK; owner dừng/HOLD và nhả quyền. |
 | `mqtt.stop()` | ACK; STOP toàn máy, giữ EN và nhả quyền; không cần là owner. |
 | `mqtt.emergency()` | ACK; dừng và nhả EN hai cửa, có thể mất lực giữ. Kiểm tra owner riêng. |
@@ -296,7 +296,7 @@ Ví dụ này không claim. Không cần tài khoản Tuya hoặc cloud riêng c
 | `mqtt.execute(8, [3])` | Gọi trực tiếp OP8/P0=3; tự thêm0 cho đủ6 tham số; trả ACK. |
 | `mqtt.get_reader_result(sequence=1, expected_command=0x94)` | None nếu chưa có reply khớp; dictionary reply nếu thành công; lỗi thì ReaderError. Dùng sequence thực tế từ ACK. |
 
-`action=claim/heartbeat/release` trên `/cmd`. Đọc không gia hạn lease. Lease hết sau3000 ms không được duy trì.
+`action=claim/heartbeat/release` trên `/cmd`. Đọc không gia hạn lease. Từ firmware 1.12.3, MQTT hết lease sau 10000 ms không được duy trì (bản cũ: 3000 ms).
 
 **Đủ19 lệnh máy và reader**
 
@@ -355,7 +355,7 @@ Sau claim, SDK đọc lại state để xác nhận owner và lấy epoch mới.
 
 `TunnelDevice` luôn dùng OP số trên wire nên hỗ trợ firmware 1.11.0 trở lên.
 Đừng nhầm với API thấp cấp cũ `Mqtt.call()` dùng named wire cần firmware 1.12.0.
-SDK không tự gửi heartbeat định kỳ; ứng dụng vẫn phải lập lịch khoảng500 ms.
+SDK không tự gửi heartbeat định kỳ; ứng dụng vẫn phải lập lịch: MQTT khoảng 1000 ms; TCP/RTU khoảng 500 ms.
 
 ```console
 python example/read_mqtt.py --host broker.example.com --root factory/tunnel01/v1
@@ -413,3 +413,5 @@ Xem [tests](tests/README.md), [Changelog](CHANGELOG.md).
 Gửi SDK/firmware version, transport, code tối thiểu và exception/ACK/state qua issue
 repo private hoặc kênh bàn giao; loại password khỏi log. Phân phối private theo
 thỏa thuận với chủ sở hữu: [LICENSE](LICENSE). Dependency giữ giấy phép riêng.
+
+[MQTT timing](docs/MQTT_TIMING.md)

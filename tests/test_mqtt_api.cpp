@@ -63,7 +63,7 @@ static void arbitration() {
     auto bad = claim;
     bad.session[0] = 'f';
     assert(api.process(bad, false, 100).code == 2);
-    assert(api.process(claim, false, 1601).code == 3 && !c.active());
+    assert(api.process(claim, false, 5101).code == 3 && !c.active());
     assert(api.process(claim, false, 100).code == 0 && c.owner() == mb::MQTT);
     assert(single(c, mb::RTU, 256, 1) == 6 && single(c, 2, 256, 1) == 6 && !c.legacyAllow(0x18));
     unsigned n = commands, b = beats;
@@ -99,33 +99,35 @@ static void arbitration() {
     assert(regs[20] == 2 && regs[32] == 0x2F);
     // Expired owner cannot revive with a delayed heartbeat, even if state is fresh.
     c.tick(3100);
+    assert(c.active() && c.controlLeaseMs() == 10000);
+    c.tick(10100);
     assert(!c.active());
     auto heartbeat = request(api, 5, tunnelmqtt::HEARTBEAT);
-    heartbeat.seen = 3100;
-    assert(api.process(heartbeat, false, 3100).code == 5);
+    heartbeat.seen = 10100;
+    assert(api.process(heartbeat, false, 10100).code == 5);
     assert(single(c, 2, 256, 1) == 0);
     api.disconnect();
     assert(c.owner() == 2); // broker failure must not stop TCP owner
     auto newClaim = request(api, 1, tunnelmqtt::CLAIM);
-    newClaim.seen = 3100;
-    assert(api.process(newClaim, false, 3100).code == 5);
+    newClaim.seen = 10100;
+    assert(api.process(newClaim, false, 10100).code == 5);
     assert(single(c, mb::RTU, 258, 1) == 0 && !c.active()); // STOP from non-owner
     api.fence();
-    assert(api.process(newClaim, false, 3100).code == 2);
-    c.tick(3200);
+    assert(api.process(newClaim, false, 10100).code == 2);
+    c.tick(10200);
     newClaim = request(api, 1, tunnelmqtt::CLAIM);
-    newClaim.seen = 3200;
-    assert(api.process(newClaim, false, 3200).code == 0);
+    newClaim.seen = 10200;
+    assert(api.process(newClaim, false, 10200).code == 0);
     api.fence();
-    assert(api.process(newClaim, false, 3200).code == 2); // queued pre-STOP claim rejected
+    assert(api.process(newClaim, false, 10200).code == 2); // queued pre-STOP claim rejected
     auto emergency = request(api, 1, tunnelmqtt::EMERGENCY);
     emergency.client[0] = 'f';
-    emergency.seen = 3200;
-    assert(api.process(emergency, false, 3200).code == 0 && emergencies == 1);
+    emergency.seen = 10200;
+    assert(api.process(emergency, false, 10200).code == 0 && emergencies == 1);
     api.disconnect();
     assert(!c.active());
     api.connect("fedcba9876543210");
-    assert(api.process(emergency, false, 3200).code == 2);
+    assert(api.process(emergency, false, 10200).code == 2);
 }
 static void json() {
     const std::string base = "{\"session\":\"0123456789abcdef\",\"client\":\"1111111111111111\","

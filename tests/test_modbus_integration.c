@@ -288,6 +288,26 @@ static void TestStandaloneRf(void) {
          "no AUTO after scan, lease and persistent Emergency protection");
 }
 int main(void) {
+    /* MQTT must use the same 10-second lease in BOTH core and Tunnel watchdog.
+       The existing RTU/TCP suites below still assert expiry at 3 seconds. */
+    MbBoot();
+    MbSingle(1, 256, 0);
+    DualRun(10);
+    MbSingle(6, 256, 1);
+    DualRun(10);
+    {
+        uint8_t start[] = {16,1,0x10,0,8,16,0,1,0,4,0,1,0,0,0,0,0,0,0,0,0,0};
+        MbTest_Queue(6, start, sizeof(start));
+    }
+    DualRun(4000);
+    assert(MbTest_Reg(16) == 6 && ZK7182_IsScanActive());
+    assert(MbTest_Reg(17) > 5900 && MbTest_Reg(17) <= 6001);
+    MbSingle(6, 256, 1);
+    DualRun(7500);
+    assert(MbTest_Reg(16) == 6 && ZK7182_IsScanActive());
+    DualRun(2600);
+    assert(MbTest_Reg(16) == 0 && !ZK7182_IsScanActive());
+    puts("PASS MQTT core + Tunnel: 10-second lease, heartbeat renewal, expiry stops RF");
     TestStandaloneRf();
     TestSessionBusy();
     TestModbusOnly();

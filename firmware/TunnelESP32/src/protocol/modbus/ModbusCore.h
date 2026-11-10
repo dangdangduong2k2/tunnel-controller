@@ -30,6 +30,7 @@ class Core {
     bool active() const {
         return controller != 0;
     }
+    uint32_t controlLeaseMs() const;
     uint8_t owner() const {
         return controller;
     }

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.4
+
+- MQTT default request timeout is 5 s; console heartbeat interval is 1 s.
+- Reuse correlated state for at most 1 s on firmware 1.12.3+, with a separate
+  GET flight-time bound. Explicit status still reads; no command retries.
+- Firmware 1.12.3 uses a 5 s token and 10 s MQTT lease; TCP/RTU retain 3 s.
+
 ## 0.1.3
 
 - Standalone scan example now requires firmware 1.12.2; 1.12.1 still blocked

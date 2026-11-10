@@ -19,7 +19,7 @@ Các ví dụ lệnh độc lập, không chạy cả tài liệu như một scr
 | `device.get_functions()` | Dictionary19OP và tham số; không IO |
 | `device.claim()` | ACK; lần đầu STOP/HOLD, không Reset |
 | `device.has_control()` | bool đúng client này đang giữ quyền; chỉ đọc |
-| `device.heartbeat()` | ACK; chủ động mỗi khoảng500ms; lease3000ms |
+| `device.heartbeat()` | ACK; MQTT từ 1.12.3: khoảng 1000 ms, lease 10000 ms; TCP/RTU: khoảng 500 ms, lease 3000 ms |
 | `device.release()` | ACK; owner dừng/HOLD và nhả quyền |
 | `device.stop()` | ACK; mọi nguồn có thể dừng/HOLD, giữ EN và nhả quyền |
 | `device.emergency()` | ACK; dừng, nhả EN hai cửa, có thể mất lực giữ; kiểm tra owner riêng |
@@ -134,7 +134,7 @@ Chọn **một** cách gọi cho một yêu cầu. Inventory RFID thủ công: 0
 
 Tham số wire: `run`: int 0..1.
 
-0=dừng,1=bắt đầu. Từ firmware1.12.2, Scan thủ công độc lập, không cần homing/cửa đóng. Claim → set_scan(1) → đọc epc_count/total_reads → set_scan(0) → release; duy trì heartbeat500ms. Không vào maintenance, không gọi Reset. Mọi motor phải đứng yên; chặn khi fault/Emergency hoặc đang ở chu trình AUTO/SEMI. Hết scan giữ STOPPED, không tự chạy AUTO. Firmware1.12.0 trở về trước vẫn yêu cầu cửa đóng. Ví dụ đầy đủ: [scan_tags.py](../example/scan_tags.py).
+0=dừng,1=bắt đầu. Từ firmware1.12.2, Scan thủ công độc lập, không cần homing/cửa đóng. Claim → set_scan(1) → đọc epc_count/total_reads → set_scan(0) → release; duy trì heartbeat: MQTT 1000 ms từ firmware 1.12.3, TCP/RTU 500 ms. Không vào maintenance, không gọi Reset. Mọi motor phải đứng yên; chặn khi fault/Emergency hoặc đang ở chu trình AUTO/SEMI. Hết scan giữ STOPPED, không tự chạy AUTO. Firmware1.12.0 trở về trước vẫn yêu cầu cửa đóng. Ví dụ đầy đủ: [scan_tags.py](../example/scan_tags.py).
 
 
 ### OP5: mode
