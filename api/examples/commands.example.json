@@ -1,0 +1,512 @@
+{
+  "note": "Ví dụ độc lập. Chỉ publish object payload. Thay session, epoch, seen_ms từ state mới nhất, dùng client riêng và id mới. Không gửi cả danh sách.",
+  "examples": [
+    {
+      "name": "claim",
+      "topic": "tunnel/01/v1/cmd",
+      "qos": 1,
+      "retain": false,
+      "payload": {
+        "session": "0123456789abcdef",
+        "epoch": 1,
+        "client": "1111111111111111",
+        "id": 1,
+        "seen_ms": 123456,
+        "action": "claim"
+      }
+    },
+    {
+      "name": "heartbeat",
+      "topic": "tunnel/01/v1/cmd",
+      "qos": 1,
+      "retain": false,
+      "payload": {
+        "session": "0123456789abcdef",
+        "epoch": 1,
+        "client": "1111111111111111",
+        "id": 1,
+        "seen_ms": 123456,
+        "action": "heartbeat"
+      }
+    },
+    {
+      "name": "release",
+      "topic": "tunnel/01/v1/cmd",
+      "qos": 1,
+      "retain": false,
+      "payload": {
+        "session": "0123456789abcdef",
+        "epoch": 1,
+        "client": "1111111111111111",
+        "id": 1,
+        "seen_ms": 123456,
+        "action": "release"
+      }
+    },
+    {
+      "name": "stop",
+      "topic": "tunnel/01/v1/cmd",
+      "qos": 1,
+      "retain": false,
+      "payload": {
+        "session": "0123456789abcdef",
+        "epoch": 1,
+        "client": "1111111111111111",
+        "id": 1,
+        "seen_ms": 123456,
+        "action": "stop"
+      }
+    },
+    {
+      "name": "emergency",
+      "topic": "tunnel/01/v1/cmd",
+      "qos": 1,
+      "retain": false,
+      "payload": {
+        "session": "0123456789abcdef",
+        "epoch": 1,
+        "client": "1111111111111111",
+        "id": 1,
+        "seen_ms": 123456,
+        "action": "emergency"
+      }
+    },
+    {
+      "name": "Reset / homing",
+      "topic": "tunnel/01/v1/cmd",
+      "qos": 1,
+      "retain": false,
+      "payload": {
+        "session": "0123456789abcdef",
+        "epoch": 2,
+        "client": "1111111111111111",
+        "id": 2,
+        "seen_ms": 123700,
+        "action": "execute",
+        "op": 1,
+        "args": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "name": "Đóng / mở cửa",
+      "topic": "tunnel/01/v1/cmd",
+      "qos": 1,
+      "retain": false,
+      "payload": {
+        "session": "0123456789abcdef",
+        "epoch": 2,
+        "client": "1111111111111111",
+        "id": 2,
+        "seen_ms": 123700,
+        "action": "execute",
+        "op": 2,
+        "args": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "name": "Chạy / dừng băng tải",
+      "topic": "tunnel/01/v1/cmd",
+      "qos": 1,
+      "retain": false,
+      "payload": {
+        "session": "0123456789abcdef",
+        "epoch": 2,
+        "client": "1111111111111111",
+        "id": 2,
+        "seen_ms": 123700,
+        "action": "execute",
+        "op": 3,
+        "args": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "name": "Bắt đầu / dừng scan",
+      "topic": "tunnel/01/v1/cmd",
+      "qos": 1,
+      "retain": false,
+      "payload": {
+        "session": "0123456789abcdef",
+        "epoch": 2,
+        "client": "1111111111111111",
+        "id": 2,
+        "seen_ms": 123700,
+        "action": "execute",
+        "op": 4,
+        "args": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "name": "Đổi chế độ",
+      "topic": "tunnel/01/v1/cmd",
+      "qos": 1,
+      "retain": false,
+      "payload": {
+        "session": "0123456789abcdef",
+        "epoch": 2,
+        "client": "1111111111111111",
+        "id": 2,
+        "seen_ms": 123700,
+        "action": "execute",
+        "op": 5,
+        "args": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "name": "Xác nhận cho hàng qua",
+      "topic": "tunnel/01/v1/cmd",
+      "qos": 1,
+      "retain": false,
+      "payload": {
+        "session": "0123456789abcdef",
+        "epoch": 2,
+        "client": "1111111111111111",
+        "id": 2,
+        "seen_ms": 123700,
+        "action": "execute",
+        "op": 6,
+        "args": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "name": "Quét lại",
+      "topic": "tunnel/01/v1/cmd",
+      "qos": 1,
+      "retain": false,
+      "payload": {
+        "session": "0123456789abcdef",
+        "epoch": 2,
+        "client": "1111111111111111",
+        "id": 2,
+        "seen_ms": 123700,
+        "action": "execute",
+        "op": 7,
+        "args": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "name": "Đặt mức tốc độ",
+      "topic": "tunnel/01/v1/cmd",
+      "qos": 1,
+      "retain": false,
+      "payload": {
+        "session": "0123456789abcdef",
+        "epoch": 2,
+        "client": "1111111111111111",
+        "id": 2,
+        "seen_ms": 123700,
+        "action": "execute",
+        "op": 8,
+        "args": [
+          3,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "name": "Chế độ cài đặt reader",
+      "topic": "tunnel/01/v1/cmd",
+      "qos": 1,
+      "retain": false,
+      "payload": {
+        "session": "0123456789abcdef",
+        "epoch": 2,
+        "client": "1111111111111111",
+        "id": 2,
+        "seen_ms": 123700,
+        "action": "execute",
+        "op": 9,
+        "args": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "name": "Đọc thông tin reader",
+      "topic": "tunnel/01/v1/cmd",
+      "qos": 1,
+      "retain": false,
+      "payload": {
+        "session": "0123456789abcdef",
+        "epoch": 2,
+        "client": "1111111111111111",
+        "id": 2,
+        "seen_ms": 123700,
+        "action": "execute",
+        "op": 20,
+        "args": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "name": "Đọc công suất antenna",
+      "topic": "tunnel/01/v1/cmd",
+      "qos": 1,
+      "retain": false,
+      "payload": {
+        "session": "0123456789abcdef",
+        "epoch": 2,
+        "client": "1111111111111111",
+        "id": 2,
+        "seen_ms": 123700,
+        "action": "execute",
+        "op": 21,
+        "args": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "name": "Đặt công suất antenna",
+      "topic": "tunnel/01/v1/cmd",
+      "qos": 1,
+      "retain": false,
+      "payload": {
+        "session": "0123456789abcdef",
+        "epoch": 2,
+        "client": "1111111111111111",
+        "id": 2,
+        "seen_ms": 123700,
+        "action": "execute",
+        "op": 22,
+        "args": [
+          20,
+          20,
+          20,
+          20,
+          1,
+          0
+        ]
+      }
+    },
+    {
+      "name": "Chọn antenna hoạt động",
+      "topic": "tunnel/01/v1/cmd",
+      "qos": 1,
+      "retain": false,
+      "payload": {
+        "session": "0123456789abcdef",
+        "epoch": 2,
+        "client": "1111111111111111",
+        "id": 2,
+        "seen_ms": 123700,
+        "action": "execute",
+        "op": 23,
+        "args": [
+          15,
+          1,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "name": "Đọc RF profile legacy",
+      "topic": "tunnel/01/v1/cmd",
+      "qos": 1,
+      "retain": false,
+      "payload": {
+        "session": "0123456789abcdef",
+        "epoch": 2,
+        "client": "1111111111111111",
+        "id": 2,
+        "seen_ms": 123700,
+        "action": "execute",
+        "op": 24,
+        "args": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "name": "Đặt RF profile legacy",
+      "topic": "tunnel/01/v1/cmd",
+      "qos": 1,
+      "retain": false,
+      "payload": {
+        "session": "0123456789abcdef",
+        "epoch": 2,
+        "client": "1111111111111111",
+        "id": 2,
+        "seen_ms": 123700,
+        "action": "execute",
+        "op": 25,
+        "args": [
+          128,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "name": "Đọc RF profile Gen2X",
+      "topic": "tunnel/01/v1/cmd",
+      "qos": 1,
+      "retain": false,
+      "payload": {
+        "session": "0123456789abcdef",
+        "epoch": 2,
+        "client": "1111111111111111",
+        "id": 2,
+        "seen_ms": 123700,
+        "action": "execute",
+        "op": 26,
+        "args": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "name": "Đặt RF profile Gen2X",
+      "topic": "tunnel/01/v1/cmd",
+      "qos": 1,
+      "retain": false,
+      "payload": {
+        "session": "0123456789abcdef",
+        "epoch": 2,
+        "client": "1111111111111111",
+        "id": 2,
+        "seen_ms": 123700,
+        "action": "execute",
+        "op": 27,
+        "args": [
+          4123,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "name": "Đọc phiên bản Ex10",
+      "topic": "tunnel/01/v1/cmd",
+      "qos": 1,
+      "retain": false,
+      "payload": {
+        "session": "0123456789abcdef",
+        "epoch": 2,
+        "client": "1111111111111111",
+        "id": 2,
+        "seen_ms": 123700,
+        "action": "execute",
+        "op": 28,
+        "args": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "name": "Đo return loss",
+      "topic": "tunnel/01/v1/cmd",
+      "qos": 1,
+      "retain": false,
+      "payload": {
+        "session": "0123456789abcdef",
+        "epoch": 2,
+        "client": "1111111111111111",
+        "id": 2,
+        "seen_ms": 123700,
+        "action": "execute",
+        "op": 29,
+        "args": [
+          13,
+          63032,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,130 @@
+ĐỌC THEO YÊU CẦU — FIRMWARE 1.11.0
+
+Bo không tự publish /state mỗi 200 ms, kể cả sau connect, claim hoặc execute.
+Ứng dụng subscribe /state trước, chờ SUBACK thành công, rồi publish yêu cầu /get.
+Ví dụ với root=tunnel/01/v1:
+  Topic gửi: tunnel/01/v1/get
+  QoS: 1; retain=false
+  Payload hoàn chỉnh: {"client":"1111111111111111","id":1}
+  Topic nhận: tunnel/01/v1/state
+Một phản hồi chứa cả trạng thái máy, EPC, tổng lượt đọc và 96 input registers.
+Phải ghép request_client và request_id trong state với client/id của yêu cầu đã gửi.
+Mọi ứng dụng subscribe cùng /state đều có thể nhận phản hồi; chỉ dùng phản hồi khớp của mình.
+client là 16 ký tự hex thường (0–9, a–f), mỗi ứng dụng tạo riêng. id là số nguyên 1..4294967295.
+Dùng id mới cho mỗi lần đọc. Bộ đếm /get độc lập với bộ đếm /cmd. Đổi client khi hết id.
+/get có đúng 2 trường client và id, tối đa 128 byte. Không cần session, epoch, seen_ms hoặc claim.
+Đọc không STOP, không đổi cấu hình, không claim, không gia hạn lease điều khiển.
+/state có QoS 1, retain=false. QoS 1 có thể lặp bản tin; xử lý trùng bằng request_client/request_id.
+/get không trả /ack. Sai schema, quá dài, phân mảnh, retained nhận từ broker hoặc hàng đợi đầy: không trả state.
+Nếu không có phản hồi khớp trong thời gian ứng dụng đặt (gợi ý 1–3 giây), báo timeout.
+Chỉ yêu cầu đọc được gửi lại với id mới. Không áp dụng retry này cho lệnh chuyển động.
+Để giám sát liên tục, ứng dụng chủ động hỏi theo chu kỳ cần dùng, gợi ý 200–500 ms.
+SDK mới: status() gửi /get và chờ phản hồi mới. Mở kết nối không tự hỏi, không có polling nền.
+Mỗi lệnh điều khiển trong SDK tự đọc token mới trước khi gửi /cmd. claim() đọc lại để xác nhận chủ sở hữu.
+SDK cũ chỉ chờ /state tự phát sẽ không dùng được. Cần nạp firmware 1.11.0 và dùng SDK kèm bản này.
+Modbus TCP và RTU giữ nguyên địa chỉ/chức năng; IR1 báo phiên bản firmware 1110.
+
+BÀN GIAO MQTT — TUNNEL FIRMWARE 1.11.0
+
+Bắt đầu với TEST_NHANH.txt để thử kết nối, đọc trạng thái và một lượt đọc công suất antenna.
+
+1. BÊN TRIỂN KHAI CẦN CUNG CẤP
+Broker host/IP, port, username/password nếu broker yêu cầu, topic root riêng cho bo.
+Mặc định root: tunnel/01/v1; port: 1883. Đây là ví dụ, chưa chứa broker hay tài khoản thật.
+Bo dùng MQTT 3.1.1 qua TCP; firmware 1.11.0 hiện chưa có TLS/WebSocket.
+Bật MQTT và điền broker/root trên web http://<IP-bo>/; DWIN hiển thị thông tin kết nối.
+Bo và ứng dụng cùng truy cập broker. Không cần mở Modbus Poll để dùng MQTT.
+
+2. TÀI LIỆU VÀ CÔNG CỤ TRONG BỘ NÀY
+Tunnel_MQTT_API_v1_11_0.xlsx: topic, schema lệnh, 24 action/OP và ý nghĩa dữ liệu state.
+Tab Lệnh MQTT đã gộp chức năng → topic → phần JSON → tác động → phản hồi cần kiểm tra.
+mqtt_quick_reference.csv và topics.csv: cùng nội dung tra cứu ở dạng CSV.
+mqtt_config.example.json: thông số kết nối để bên nhận điền.
+mqtt_demo.py: chương trình chỉ đọc trạng thái, không claim, không gửi lệnh điều khiển.
+mqtt_read_power.py: bài test claim/maintenance/đọc công suất/nhả quyền, tự heartbeat khi chờ.
+Bài test này có STOP/HOLD khi claim; chỉ chạy lúc máy rảnh. Không ghi cấu hình RF.
+tunnel_api.py: SDK hiện có, tương thích API MQTT của firmware 1.11.0.
+examples/: JSON minh họa. Không dùng nguyên token/thời gian mẫu để gửi vào bo.
+
+3. TEST NHANH BẰNG PYTHON 3.10+
+Mở terminal tại thư mục này:
+  python -m pip install -r requirements.txt
+Sao chép mqtt_config.example.json thành mqtt_config.json, điền broker/port/root/tài khoản.
+  python mqtt_demo.py --config mqtt_config.json --samples 1
+Không có --samples hoặc --samples 0: theo dõi liên tục. Ctrl+C để dừng.
+Kết quả gồm firmware, trạng thái, lỗi, chế độ, số EPC, tổng lượt đọc, nguồn điều khiển và lease.
+Lệnh này publish /get và subscribe state/ack; không làm máy chuyển động.
+
+Có thể dùng MQTT Explorer để quan sát <root>/state, <root>/ack, <root>/availability.
+Đọc trạng thái không cần claim hoặc heartbeat. availability retained không chứng minh state còn mới.
+Để điều khiển liên tục, dùng ứng dụng/SDK có bộ định thời heartbeat.
+
+4. FORMAT JSON GỬI VÀO <root>/cmd
+Ví dụ minh họa claim:
+{"session":"0123456789abcdef","epoch":1,"client":"1111111111111111","id":1,"seen_ms":123456,"action":"claim"}
+Ví dụ minh họa đọc công suất sau khi đã vào maintenance:
+{"session":"0123456789abcdef","epoch":2,"client":"1111111111111111","id":3,"seen_ms":123900,"action":"execute","op":21,"args":[0,0,0,0,0,0]}
+
+Mỗi lần gửi phải lấy session, epoch, ms từ state mới nhất; seen_ms=ms của bo, không phải Unix time.
+client là 16 ký tự [0-9a-f] do ứng dụng tạo, giữ nguyên trong phiên. id tăng cho mỗi request mới.
+claim/heartbeat/release/stop/emergency: đúng 6 trường, không thêm op hoặc args.
+execute: đúng 8 trường, args phải đủ 6 số từ 0..65535.
+JSON tối đa 512 byte, không field lạ/trùng, không escape. Publish QoS 1, retain=false.
+JSON không hợp lệ, quá dài hoặc bị phân mảnh không được xử lý và có thể không có ACK.
+
+5. TRÌNH TỰ ĐIỀU KHIỂN
+a) Subscribe state và ack, chờ SUBACK. Publish /get để lấy state mới, không retained; không dùng state đã cũ quá 1,5 giây.
+b) Gửi claim, chờ ACK, rồi publish /get để lấy state mới có owner_client=client của mình, registers[16]=6.
+   Claim lần đầu dừng/HOLD máy và có thể đổi epoch. Luôn lấy lại token từ state sau claim.
+c) Gửi heartbeat mỗi 500 ms. Đọc state hoặc gửi lại request cũ không gia hạn lease.
+d) Gửi execute với OP và args từ Excel. SEQ nội bộ do firmware tạo, không thêm SEQ vào JSON.
+e) Kiểm tra ACK, sau đó hỏi /get để theo dõi state để biết thao tác hoàn tất.
+f) Khi xong, gửi release. Nếu đang maintenance: thoát bằng OP9 args=[0,0,0,0,0,0] trước.
+Quá 3000 ms không gia hạn sẽ dừng và mất quyền. TCP, RTU, MQTT dùng chung quyền điều khiển.
+
+Ví dụ SDK (sau khi tạo device=Mqtt(...) theo mqtt_demo.py):
+  device.status()                              # chỉ đọc
+  device.claim()                               # lấy quyền và chờ state cập nhật
+  device.heartbeat()                           # ứng dụng gọi mỗi 500 ms khi giữ quyền
+  device.command("maintenance", [1])           # vào cài reader
+  ack = device.command("antenna.power.get")     # OP21; SDK tự thêm đủ 6 args
+  device.command("antenna.power.set", [20,20,20,20,1])  # OP22, chỉ RAM
+  device.command("maintenance", [0])           # thoát khi không còn lệnh pending
+  device.release()
+Các dòng trên minh họa lời gọi API, không phải chuỗi tự động chạy ngay. Kiểm tra mỗi ACK và
+phản hồi reader trước lệnh tiếp theo. Ứng dụng phải bố trí heartbeat trong lúc chờ.
+SDK không tự heartbeat/retry/claim/reconnect. close() chỉ đóng MQTT, không tự gửi release.
+Lệnh bị timeout có thể đã thực hiện: đọc lại trạng thái, không tự phát lệnh chuyển động mới.
+
+6. ĐỌC ACK VÀ KẾT QUẢ
+Ghép ACK bằng session + epoch + client + id của request đã gửi.
+ACK phản ánh token của request; state sau thao tác có thể đã có epoch khác.
+code=0, exception=0, result=0 nghĩa lệnh được chấp nhận, chưa chứng minh cơ cấu hoặc reader hoàn tất.
+code: 0=đã xử lý; 1=sai nội dung; 2=sai session/epoch; 3=seen_ms cũ/tương lai;
+4=retained; 5=không có quyền; 6=lỗi Modbus, xem exception; 7=id cũ/trùng khác nội dung;
+8=đầy bảng 8 client trong epoch.
+result: 0=accepted; 1=sai tham số; 2=bận/interlock; 3=chưa đủ điều kiện cửa/emergency;
+4=reader chưa sẵn sàng; 7=không hỗ trợ; 8=lưu tốc độ thất bại.
+exception: 1=FC không hỗ trợ; 2=địa chỉ; 3=giá trị/sequence; 4=thất bại; 6=bận/không có quyền.
+Retry cùng request mới nhất, gồm cả seen_ms, trả kết quả cũ mà không chạy lại trong cùng epoch.
+Đổi session/epoch làm request cũ hết hiệu lực. Không lưu lệnh chờ để chạy lại sau reconnect.
+
+7. ĐỌC DỮ LIỆU
+state có firmware, api_version, request_client, request_id, session, epoch, ms, owner_client và registers gồm đúng 96 số.
+registers[n] có cùng ý nghĩa với Input Register địa chỉ n, tính từ 0.
+Không bỏ/xê dịch phần tử trong mảng. Bảng không trình bày mục phiên bản bảng thanh ghi theo yêu cầu.
+Số EPC=registers[10]. Tổng lượt đọc=registers[11]*65536+registers[12].
+Byte cao/word cao đặt trước. MQTT hiện không publish IR96..99 hoặc Holding Register.
+OP20..29 cần maintenance, reader ready, không scan/lệnh reader đang chờ.
+Reader thành công: registers[21]=sequence trong ACK; [20]=2; [22]=0; [23]>=2; [33]=0.
+Với OP21, cần [23]>=6, công suất ANT1..4 ở [34]..[37]. Với OP20, mask ở [42] khi [23]>=11.
+Trạng thái received đơn lẻ chưa đủ để xác nhận reader chấp nhận cấu hình.
+
+8. QUYỀN TOPIC
+Tài khoản bo: subscribe <root>/get, /cmd, publish <root>/state, /ack, /availability.
+Tài khoản ứng dụng điều khiển: publish <root>/get, /cmd, subscribe <root>/state, /ack, /availability.
+Tài khoản chỉ giám sát: publish <root>/get và subscribe các topic phản hồi, không cần quyền /cmd. client trong JSON không phải mật khẩu.
+Thông tin đăng nhập do bên triển khai cung cấp riêng; bộ này chỉ chứa cấu hình mẫu.
+
+Nguồn: MqttJson.cpp, MqttApi.cpp, EspMqtt.cpp và ModbusCore.cpp của firmware 1.11.0.
+Không dùng schema MQTT API 1.8.1 cũ với bộ này. Không cần giao source ESP32 để tích hợp MQTT.

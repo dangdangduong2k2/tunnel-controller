@@ -1,0 +1,14 @@
+{
+  "no_unsolicited_state": true,
+  "two_clients_correlated": true,
+  "wrong_reply_rejected": true,
+  "fresh_token_before_commands": true,
+  "reads_do_not_renew_lease": true,
+  "reconnect_bootstrap": true,
+  "read_only_demo_samples": 3,
+  "reader_power_test": true,
+  "heartbeat_test": true,
+  "reader_error_test": true,
+  "requests_observed": 132,
+  "control_messages_observed": 19
+}

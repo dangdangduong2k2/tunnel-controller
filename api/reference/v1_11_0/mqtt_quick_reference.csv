@@ -1,0 +1,76 @@
+﻿"Chức năng","Topic / chiều","Payload JSON (phần lệnh)","Tác động / giá trị / điều kiện","Phản hồi cần kiểm tra"
+"Đọc trạng thái máy + EPC","<root>/get
+PUBLISH
+<root>/state
+SUBSCRIBE","{""client"":""1111111111111111"",""id"":1}","Subscribe /state, chờ SUBACK, rồi gửi /get. Một lần hỏi trả trạng thái + EPC + tổng lượt đọc. Không claim, không gia hạn lease. Bo không tự gửi mỗi 200 ms.","Ghép request_client/request_id. Trạng thái=registers[2]; lỗi=[3]; EPC=[10]; tổng lượt đọc=[11]×65536+[12]. JSON này đầy đủ, không thêm 5 trường /cmd."
+"Kiểm tra online","<root>/availability
+SUBSCRIBE","Nhận {""online"":true} hoặc {""online"":false}.","Online/offline từ kết nối và Last Will. Bản tin được retain.","online=true chỉ là kết nối; phải có state mới trước khi điều khiển."
+"Lấy quyền","<root>/cmd
+PUBLISH","{""action"":""claim""}","Dừng/HOLD và lấy quyền. Chờ state mới có owner_client của mình trước khi gửi execute.","ACK OK, sau đó state mới: owner_client bằng client của mình, registers[16]=6. Lấy epoch mới từ state."
+"Duy trì quyền","<root>/cmd
+PUBLISH","{""action"":""heartbeat""}","Gửi mỗi 500 ms; lease 3000 ms. Chỉ nguồn đang giữ quyền được gửi.","ACK OK; registers[17] là lease còn lại, registers[16]=6 và owner_client vẫn là mình."
+"Nhả quyền","<root>/cmd
+PUBLISH","{""action"":""release""}","Dừng/HOLD và nhả quyền của mình.","ACK OK; state sau đó registers[16]=0 và owner_client rỗng. Máy dừng."
+"STOP/HOLD","<root>/cmd
+PUBLISH","{""action"":""stop""}","Dừng toàn máy, giữ EN, nhả quyền; không cần đang giữ quyền. Vẫn cần token state hợp lệ.","ACK OK; theo dõi trạng thái máy và đầu ra dừng. registers[16]=0."
+"Emergency","<root>/cmd
+PUBLISH","{""action"":""emergency""}","Dừng, nhả EN hai cửa; không tự nhả lease đang còn hạn. Vẫn cần token state hợp lệ.","ACK OK; kiểm tra registers[7]/[8] để xác nhận trạng thái Emergency/nhả EN. Không suy ra đã nhả quyền."
+"Reset / homing","<root>/cmd
+PUBLISH","{""action"":""execute"",""op"":1,""args"":[0,0,0,0,0,0]}","Tham số cho phép: P0..P5=0
+Reset và homing hai cửa. Có chuyển động cửa. Không giữ Emergency. Chờ homing xong trước khi chạy.","ACK OK, rồi registers[3]=0, registers[8] bit 1=đã homing. Theo dõi registers[2] và cảm biến [5]."
+"Đóng / mở cửa","<root>/cmd
+PUBLISH","{""action"":""execute"",""op"":2,""args"":[1,0,0,0,0,0]}","Tham số cho phép: P0: 1=đóng; 0=mở
+Đóng/homing hoặc mở cửa. Cần trạng thái manual/STOPPED phù hợp. Mở cửa có thể dừng băng tải và hủy scan.","ACK OK; theo dõi trạng thái máy registers[2], cảm biến [5] và bit hoạt động cửa ở [6]."
+"Chạy / dừng băng tải","<root>/cmd
+PUBLISH","{""action"":""execute"",""op"":3,""args"":[1,0,0,0,0,0]}","Tham số cho phép: P0: 1=chạy; 0=dừng
+Điều khiển băng tải. Chạy cần interlock cho phép, IN3 không tác động, cửa không chạy. Đọc IR6 bit 2.","ACK OK; registers[6] bit 2 phản ánh băng tải chạy/dừng."
+"Bắt đầu / dừng scan","<root>/cmd
+PUBLISH","{""action"":""execute"",""op"":4,""args"":[1,0,0,0,0,0]}","Tham số cho phép: P0: 1=bắt đầu; 0=dừng
+Đọc RFID hoặc dừng đọc. Bắt đầu cần cửa đóng và trạng thái cho phép. Đọc IR10=số EPC; IR15=kết quả scan.","ACK OK; registers[6] bit 3=scan active, [15] chứa kết quả scan. Số EPC ở [10]."
+"Đổi chế độ","<root>/cmd
+PUBLISH","{""action"":""execute"",""op"":5,""args"":[1,0,0,0,0,0]}","Tham số cho phép: P0: 0=AUTO; 1=SEMI
+Chọn tự động hoặc bán tự động. Chỉ khi IR2=0, 7 hoặc 14 đã homing; không maintenance/emergency. Có thể mở cửa. Đọc IR4.","ACK OK; registers[4] bằng chế độ yêu cầu. Theo dõi [2] vì đổi chế độ có thể mở cửa."
+"Xác nhận cho hàng qua","<root>/cmd
+PUBLISH","{""action"":""execute"",""op"":6,""args"":[0,0,0,0,0,0]}","Tham số cho phép: P0..P5=0
+Mở cửa và tiếp tục chu trình. Chỉ khi IR2=9, đang chờ xác nhận bán tự động.","ACK OK; registers[2] rời trạng thái chờ xác nhận (9), theo dõi cửa và chu trình."
+"Quét lại","<root>/cmd
+PUBLISH","{""action"":""execute"",""op"":7,""args"":[0,0,0,0,0,0]}","Tham số cho phép: P0..P5=0
+Bắt đầu chu trình quét lại. Chỉ khi IR2=9, đang chờ xác nhận bán tự động.","ACK OK; theo dõi registers[2], [10]..[15] để biết tiến trình và kết quả quét lại."
+"Đặt mức tốc độ","<root>/cmd
+PUBLISH","{""action"":""execute"",""op"":8,""args"":[3,0,0,0,0,0]}","Tham số cho phép: P0: 1..5
+Đặt tốc độ băng tải và lưu NVS. Máy rảnh/dừng, reader ready, không motion/scan/pending. Xác nhận HR280=0 và IR9=mức đã đặt.","ACK OK; registers[9] bằng mức tốc độ đã đặt."
+"Chế độ cài đặt reader","<root>/cmd
+PUBLISH","{""action"":""execute"",""op"":9,""args"":[1,0,0,0,0,0]}","Tham số cho phép: P0: 1=vào; 0=thoát
+Bật/tắt maintenance. Máy dừng, reader ready, không scan/chuyển động/pending. Kiểm tra IR6 bit 4.","ACK OK; registers[6] bit 4 bằng 1 khi vào, 0 khi thoát maintenance."
+"Đọc thông tin reader","<root>/cmd
+PUBLISH","{""action"":""execute"",""op"":20,""args"":[0,0,0,0,0,0]}","Tham số cho phép: P0..P5=0
+Đọc thông tin và antenna đang bật. Mask antenna tại IR42 khi IR23≥11. Bit 0..3=ANT1..4.","Reader OK; nếu registers[23]≥11: mask antenna ở registers[42]. Các byte thông tin khác nằm trong reply."
+"Đọc công suất antenna","<root>/cmd
+PUBLISH","{""action"":""execute"",""op"":21,""args"":[0,0,0,0,0,0]}","Tham số cho phép: P0..P5=0
+Đọc công suất ANT1..4. IR34..37, đơn vị dBm, khi IR23≥6.","Reader OK; registers[23]≥6; registers[34..37] là công suất ANT1..4 (dBm)."
+"Đặt công suất antenna","<root>/cmd
+PUBLISH","{""action"":""execute"",""op"":22,""args"":[20,20,20,20,1,0]}","Tham số cho phép: P0..P3: ANT1..4, mỗi giá trị 0..30 dBm.
+P4: 1=RAM; 0=lưu reader. P5=0.
+Đặt công suất riêng từng antenna. Đợi reader xác nhận, sau đó dùng OP21 đọc lại. Chỉ ghi khi cần thay đổi.","Reader OK, sau đó gửi OP21 đọc lại registers[34..37] để đối chiếu công suất đã đặt."
+"Chọn antenna hoạt động","<root>/cmd
+PUBLISH","{""action"":""execute"",""op"":23,""args"":[15,1,0,0,0,0]}","Tham số cho phép: P0: mask 1..15.
+P1: 1=RAM; 0=lưu reader.
+Bit 0..3=ANT1..4. Ví dụ 1=ANT1; 5=ANT1+ANT3; 15=cả bốn. Mask 0 không hợp lệ. Dùng OP20 đọc lại.","Reader OK, sau đó OP20 đọc lại mask ở registers[42], cần registers[23]≥11."
+"Đọc RF profile legacy","<root>/cmd
+PUBLISH","{""action"":""execute"",""op"":24,""args"":[0,0,0,0,0,0]}","Tham số cho phép: P0..P5=0
+Đọc profile legacy. IR34 khi IR23≥3 và phản hồi hợp lệ.","Reader OK; registers[23]≥3; profile legacy tại registers[34]."
+"Đặt RF profile legacy","<root>/cmd
+PUBLISH","{""action"":""execute"",""op"":25,""args"":[128,0,0,0,0,0]}","Tham số cho phép: P0: byte Set 0..255, bit 7 phải bằng 1.
+Ghi profile legacy đã mã hóa. P0 & 63 thuộc: 0,1,2,3,5,7,11,12,13,15,50..53. Dùng OP24 đọc lại.","Reader OK, sau đó OP24 đọc lại profile legacy."
+"Đọc RF profile Gen2X","<root>/cmd
+PUBLISH","{""action"":""execute"",""op"":26,""args"":[0,0,0,0,0,0]}","Tham số cho phép: P0..P5=0
+Đọc profile 16 bit. Profile = IR34 × 256 + IR35, khi IR23≥4.","Reader OK; registers[23]≥4; profile=registers[34]×256+registers[35]."
+"Đặt RF profile Gen2X","<root>/cmd
+PUBLISH","{""action"":""execute"",""op"":27,""args"":[4123,0,0,0,0,0]}","Tham số cho phép: P0: profile ID 16 bit.
+Đặt profile Gen2X. Dùng OP26 đọc lại. ID cho phép: 1, 3, 5, 7, 11, 12, 13, 15, 102, 103, 104, 120, 123, 124, 125, 126, 141, 146, 147, 148, 185, 202, 203, 205, 222, 223, 224, 225, 226, 241, 244, 285, 302, 323, 324, 325, 326, 342, 343, 344, 345, 382, 4123, 4124, 4141, 4146, 4148, 4185, 5123, 5124, 5141, 5146, 5148, 5185. Reader phải hỗ trợ profile đã chọn.","Reader OK, sau đó OP26 đọc lại profile 16 bit."
+"Đọc phiên bản Ex10","<root>/cmd
+PUBLISH","{""action"":""execute"",""op"":28,""args"":[0,0,0,0,0,0]}","Tham số cho phép: P0..P5=0
+Đọc thông tin phiên bản reader. Phản hồi trong IR32..95 theo độ dài IR23.","Reader OK; đọc reply ở registers[32..95], số byte hợp lệ tại [23]."
+"Đo return loss","<root>/cmd
+PUBLISH","{""action"":""execute"",""op"":29,""args"":[13,63032,0,0,0,0]}","Tham số cho phép: P0: word cao tần số kHz; P1: word thấp. P2: antenna 0..3.
+Đo tại tần số và antenna đã chọn. 840000..960000 kHz, chia hết cho 100 hoặc 125. Giá trị thô tại IR34 khi IR23≥3.","Reader OK; registers[23]≥3; kết quả thô tại registers[34]."

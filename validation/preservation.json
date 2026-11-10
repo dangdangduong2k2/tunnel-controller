@@ -1,0 +1,71 @@
+{
+  "baseline": "1.11.0",
+  "comparison": "C tokens ignoring comments/include paths; lease macro resolved to original 3000UL; adjacent string literals joined",
+  "modules": [
+    {
+      "file": "firmware/TunnelESP32/src/control/tunnel.c",
+      "same_algorithm_tokens": true,
+      "tokens": 9379
+    },
+    {
+      "file": "firmware/TunnelESP32/src/control/motor_profile.c",
+      "same_algorithm_tokens": true,
+      "tokens": 297
+    },
+    {
+      "file": "firmware/TunnelESP32/src/control/dwin_control.c",
+      "same_algorithm_tokens": true,
+      "tokens": 121
+    },
+    {
+      "file": "firmware/TunnelESP32/src/reader/zk7182.c",
+      "same_algorithm_tokens": true,
+      "tokens": 5205
+    },
+    {
+      "file": "firmware/TunnelESP32/src/hmi/hmi.c",
+      "same_algorithm_tokens": true,
+      "tokens": 3832
+    },
+    {
+      "file": "firmware/TunnelESP32/src/app/dual_control.c",
+      "same_algorithm_tokens": true,
+      "tokens": 295
+    },
+    {
+      "file": "firmware/TunnelESP32/src/platform/esp32/EspMotors.cpp",
+      "same_algorithm_tokens": true,
+      "tokens": 2741
+    },
+    {
+      "file": "firmware/TunnelESP32/src/platform/esp32/StepSequence.h",
+      "same_algorithm_tokens": true,
+      "tokens": 143
+    },
+    {
+      "file": "firmware/TunnelESP32/src/platform/esp32/EspUsb.cpp",
+      "same_algorithm_tokens": true,
+      "tokens": 1851
+    },
+    {
+      "file": "firmware/TunnelESP32/src/config/DeviceConfig.cpp",
+      "same_algorithm_tokens": true,
+      "tokens": 3365
+    },
+    {
+      "file": "firmware/TunnelESP32/src/protocol/legacy/SharedUart.c",
+      "same_algorithm_tokens": true,
+      "tokens": 635
+    },
+    {
+      "file": "firmware/TunnelESP32/src/protocol/legacy/pc_control.c",
+      "same_algorithm_tokens": true,
+      "tokens": 2806
+    },
+    {
+      "file": "firmware/TunnelESP32/src/hmi/HmiNetwork.cpp",
+      "same_algorithm_tokens": true,
+      "tokens": 552
+    }
+  ]
+}

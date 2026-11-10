@@ -1,0 +1,4 @@
+PASS generated contracts and web UI
+Sketch uses 955399 bytes (28%) of program storage space. Maximum is 3342336 bytes.
+Global variables use 102984 bytes (31%) of dynamic memory, leaving 224696 bytes for local variables. Maximum is 327680 bytes.
+Built C:\Users\Duong\Documents\Codex\2026-10-29\d-5-ct-tunnel\outputs\Tunnel_Controller_v1_12_0\dist\TunnelESP32_v1_12_0_app.bin SHA256 fd51f6818eb76f6e71a0a0fa4058cfe86e49106dcfcb86ded17648baf6c60192

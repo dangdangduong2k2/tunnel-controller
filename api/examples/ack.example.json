@@ -1,0 +1,11 @@
+{
+  "api_version": 1,
+  "session": "0123456789abcdef",
+  "epoch": 2,
+  "client": "1111111111111111",
+  "id": 2,
+  "code": 0,
+  "exception": 0,
+  "result": 0,
+  "sequence": 1
+}

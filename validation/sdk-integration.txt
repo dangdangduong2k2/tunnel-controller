@@ -1,0 +1,12 @@
+PASS TCP reads current firmware
+PASS Connecting and reading sends no machine command
+PASS TCP explicit claim
+PASS Named SDK maintenance through Modbus
+PASS Four antenna powers
+PASS Reader request accepted
+PASS Reader reply is separate from acceptance
+PASS RTU framing/CRC and fragmented serial reads
+PASS RTU excludes TCP controller
+PASS RTU FC16 mailbox / FC03 result
+PASS No heartbeat: lease expires without heartbeat
+PASS 11 integration assertions; native core + real TCP; RTU serial simulated

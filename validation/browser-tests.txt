@@ -1,0 +1,16 @@
+PASS compiled embedded page matches web source exactly
+PASS offline page loads without external assets
+PASS incorrect admin password rejected
+PASS first setup requires replacing admin password
+PASS invalid IPv4 rejected before persistence
+PASS busy machine disables save without discarding draft
+PASS no horizontal overflow at 375px
+PASS no horizontal overflow at 768px
+PASS no horizontal overflow at 1024px
+PASS no horizontal overflow at 1440px
+PASS save acknowledges verified persistent write then restart
+PASS broker, serial format and Unit ID survive simulated reboot
+PASS stored broker password redacted on reload
+PASS changing broker needs no firmware build and preserves omitted password
+PASS no browser JavaScript errors
+PASS 15 browser assertions; real configuration handlers, simulated NVS/GPIO

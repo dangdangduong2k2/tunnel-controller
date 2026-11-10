@@ -1,0 +1,98 @@
+ĐỌC THEO YÊU CẦU — FIRMWARE 1.11.0
+
+Bo không tự publish /state mỗi 200 ms, kể cả sau connect, claim hoặc execute.
+Ứng dụng subscribe /state trước, chờ SUBACK thành công, rồi publish yêu cầu /get.
+Ví dụ với root=tunnel/01/v1:
+  Topic gửi: tunnel/01/v1/get
+  QoS: 1; retain=false
+  Payload hoàn chỉnh: {"client":"1111111111111111","id":1}
+  Topic nhận: tunnel/01/v1/state
+Một phản hồi chứa cả trạng thái máy, EPC, tổng lượt đọc và 96 input registers.
+Phải ghép request_client và request_id trong state với client/id của yêu cầu đã gửi.
+Mọi ứng dụng subscribe cùng /state đều có thể nhận phản hồi; chỉ dùng phản hồi khớp của mình.
+client là 16 ký tự hex thường (0–9, a–f), mỗi ứng dụng tạo riêng. id là số nguyên 1..4294967295.
+Dùng id mới cho mỗi lần đọc. Bộ đếm /get độc lập với bộ đếm /cmd. Đổi client khi hết id.
+/get có đúng 2 trường client và id, tối đa 128 byte. Không cần session, epoch, seen_ms hoặc claim.
+Đọc không STOP, không đổi cấu hình, không claim, không gia hạn lease điều khiển.
+/state có QoS 1, retain=false. QoS 1 có thể lặp bản tin; xử lý trùng bằng request_client/request_id.
+/get không trả /ack. Sai schema, quá dài, phân mảnh, retained nhận từ broker hoặc hàng đợi đầy: không trả state.
+Nếu không có phản hồi khớp trong thời gian ứng dụng đặt (gợi ý 1–3 giây), báo timeout.
+Chỉ yêu cầu đọc được gửi lại với id mới. Không áp dụng retry này cho lệnh chuyển động.
+Để giám sát liên tục, ứng dụng chủ động hỏi theo chu kỳ cần dùng, gợi ý 200–500 ms.
+SDK mới: status() gửi /get và chờ phản hồi mới. Mở kết nối không tự hỏi, không có polling nền.
+Mỗi lệnh điều khiển trong SDK tự đọc token mới trước khi gửi /cmd. claim() đọc lại để xác nhận chủ sở hữu.
+SDK cũ chỉ chờ /state tự phát sẽ không dùng được. Cần nạp firmware 1.11.0 và dùng SDK kèm bản này.
+Modbus TCP và RTU giữ nguyên địa chỉ/chức năng; IR1 báo phiên bản firmware 1110.
+
+TEST MQTT — TUNNEL 1.11.0
+
+1. ĐIỀN KẾT NỐI
+Sao chép mqtt_config.example.json thành mqtt_config.json.
+Điền mqtt_host, mqtt_port, mqtt_username, mqtt_password, mqtt_root đúng với bo.
+MQTT phải được bật trên web cấu hình bo; DWIN Kết nối → MQTT hiển thị trạng thái.
+Máy tính và bo cần cùng truy cập broker. MQTT hiện dùng TCP, không TLS/WebSocket.
+Tài khoản giám sát cần publish <root>/get và subscribe <root>/state; có thể subscribe /ack, /availability.
+Tài khoản điều khiển cần thêm quyền publish <root>/cmd.
+
+2. CÀI THƯ VIỆN
+Mở terminal trong thư mục bộ bàn giao:
+  python -m pip install -r requirements.txt
+
+3. TEST CHỈ ĐỌC TRẠNG THÁI
+  python mqtt_demo.py --config mqtt_config.json --samples 1
+Mong đợi 1 dòng JSON với firmware=1110 nếu bo chạy 1.11.0.
+unique_epcs là số EPC, total_reads là tổng lượt đọc. fault=0 là không lỗi máy.
+Chương trình này chỉ publish yêu cầu đọc /get, không gửi /cmd, không claim và không làm máy chuyển động.
+Nếu đứng chờ/lỗi: kiểm tra broker, root, quyền subscribe, MQTT trên bo và /get đã gửi và state có khớp client/id không.
+
+4. TEST REQUEST → ACK → PHẢN HỒI READER
+Chỉ chạy lúc máy rảnh/dừng, reader sẵn sàng và không có nguồn khác giữ quyền.
+Bài test có claim nên sẽ STOP/HOLD máy; không gửi Reset/chạy cửa/chạy băng tải hoặc ghi cấu hình RF.
+  python mqtt_read_power.py --config mqtt_config.json
+Chương trình tự thực hiện:
+  claim → /get xác nhận sở hữu → maintenance ON → OP21 đọc công suất → chờ reply
+  (heartbeat mỗi 500 ms trong lúc chờ) → maintenance OFF → release.
+Kết quả thành công có dạng:
+  {"power_dbm":{"ANT1":30,"ANT2":30,"ANT3":30,"ANT4":30},"reader_sequence":2}
+Các mức 30 và sequence=2 chỉ minh họa; giá trị thực tùy reader và lịch sử lệnh.
+Sau test, kiểm tra state mới: owner=0, owner_client rỗng, activity_flags bit 4=0.
+Nếu chỉ nhận ACK mà reader lỗi, chương trình báo lỗi và không in kết quả thành công.
+Nếu kết nối mất, không tự claim/retry lệnh; khôi phục kết nối rồi kiểm tra trạng thái trước.
+Nếu báo Cleanup not confirmed, kiểm tra owner/maintenance trên state; lease hết sau 3 giây không heartbeat.
+
+5. TRA CỨU ĐỂ VIẾT ỨNG DỤNG
+Tab Lệnh MQTT: mỗi dòng có chức năng, topic, phần JSON, tác động và phản hồi cần kiểm tra.
+Riêng /cmd: payload hoàn chỉnh = 5 trường chung session/epoch/client/id/seen_ms + phần JSON của dòng.
+Không gửi riêng phần JSON rút gọn trong bảng. examples/commands.example.json có mẫu đầy đủ.
+Ví dụ complete cho OP21 (phải thay token/thời gian bằng state vừa nhận):
+{"session":"0123456789abcdef","epoch":2,"client":"1111111111111111","id":3,"seen_ms":123900,"action":"execute","op":21,"args":[0,0,0,0,0,0]}
+Publish tới <root>/cmd, QoS 1, retain=false. Chỉ publish object payload trong file ví dụ.
+session/epoch/seen_ms lấy từ state mới; id tăng mỗi request; client do ứng dụng tạo riêng.
+Chỉ số registers tính từ 0 và không xê dịch. Các ký hiệu IRn trong tài liệu tương ứng registers[n].
+
+6. PHẢN HỒI VÀ TIÊU CHÍ THÀNH CÔNG
+ACK phải khớp session + epoch + client + id của request.
+code=0, exception=0, result=0: lệnh đã được chấp nhận.
+Muốn xác nhận cơ cấu hoàn tất: đọc trạng thái/cảm biến trong cột Phản hồi của bảng.
+Với reader: registers[21]=ACK.sequence, [20]=2, [22]=0, [23]>=2, [33]=0.
+Đọc công suất OP21: thêm [23]>=6, [32]=148 (0x94); [34]..[37] là công suất ANT1..4.
+ACK có thể chứa epoch của request cũ trong khi state đã chuyển epoch mới sau claim/stop.
+availability online=true không đủ để gửi lệnh; cần state mới không retained.
+
+7. LỖI THƯỜNG GẶP
+Không có state: chưa gửi /get, sai broker/root, bo còn firmware cũ, MQTT chưa bật hoặc ACL thiếu publish /get / subscribe /state.
+Có state nhưng không có ACK: thiếu quyền publish, sai schema/field/args hoặc payload quá 512 byte.
+code=2: session/epoch đã thay đổi. Lấy state mới, kiểm tra máy; không phát lại thao tác cũ tự động.
+code=3: seen_ms quá cũ hoặc dùng sai giờ máy tính. Phải dùng ms của state mới nhất.
+code=5: nguồn khác giữ quyền hoặc chưa claim. Xem owner_client và registers[16].
+code=6: xem exception; 6 thường là bận/chưa có quyền/reader pending.
+code=7: id cũ hoặc request trùng id nhưng đổi nội dung. Request mới dùng id mới.
+result=2/3/4: máy bận/interlock, chưa đủ điều kiện hoặc reader chưa sẵn sàng.
+Nhận reply reader nhưng [33] khác 0: reader từ chối; không coi đó là đã ghi thành công.
+Không tự động gửi lại lệnh chuyển động khi mất ACK. Quy tắc retry chi tiết ở BAT_DAU.txt.
+
+8. FILE BÀN GIAO
+Excel: bảng đầy đủ, có lọc. mqtt_quick_reference.csv: bảng tra cứu để nhập vào hệ thống khác.
+topics.csv: topic, chiều truyền, QoS, retain và mô tả. <root> phải thay bằng root thật khi tích hợp.
+BAT_DAU.txt: hợp đồng API, bảng mã lỗi, quyền topic và giới hạn phiên bản.
+Giữ thông tin đăng nhập thật riêng; các file trong bộ chỉ chứa giá trị mẫu.

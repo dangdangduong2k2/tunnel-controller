@@ -1,0 +1,34 @@
+reader_frequency: PASS reader START-only: no config TX; 99 tags/297 reads; long/fragmented EPC; pause/resume; 30 s/wrap; cancel/reconnect; lost ACK/data confirmation; bounded retries; overflow
+mqtt_transport: PASS MQTT transport: no unsolicited state, strict /get, correlation, retained/fragment rejection, reconnect, flood isolation, no lease renewal
+hmi_network: HMI network passed: exact VP map, live/offline/fallback, serial settings, all MQTT states, refresh, UART retry, timer wrap
+config_service: PASS config service: real HTTP handlers/auth, first-use password, stale revision, owner rejection, STOP fence before NVS, write failure, persisted reboot, physical recovery waits for BOOT release, long-uptime login and rollover rate limit
+device_config: PASS config: defaults, dual-slot persistence/reboot/torn writes, strict partial updates, secret redaction, IP/serial validation, all 16 apply safety states
+protocol_sim: PASS simulator compiled (use --serve for integration)
+mqtt_api: PASS MQTT: strict numeric/named JSON, all catalog methods, correlation fields, bounds, arbitration, lease, replay, fence, reconnect, antenna and reader results
+modbus_core: PASS Modbus: CRC/MBAP, malformed lengths, units, exceptions, ownership, lease/wrap, replay, STOP from non-owner, antenna RAM/persistent bytes, async replies/errors
+profile: motor_profile: PASS (close=6000, open=5100, start=2801us, run=701us)
+cycle: tunnel HMI state machine: PASS (AUTO, SEMI/Confirm, repeated Rescan, manual ownership, single pass, SS3 bounce/stop, missing SS3 fault, Emergency latch/all four outputs, Reset recovery)
+reader_cycle: PASS integration: real reader + Tunnel, confirmed IN7 retained before ACK and across AUTO/SEMI/Rescan to IN3, missing ACK/IN3 timeout unchanged, reader recovery, IN2 interlock; only 50/51 TX
+integration: PASS PC supervision: sensor AUTO timeout holds, late heartbeat cannot revive, deliberate disconnect holds
+PASS antenna power: 94 Get, four-port 2F RAM/persistent, exact bytes, readback, invalid values/lengths, lease, duplicate Set, timeout and no inventory/config side effects
+PASS PC speed persistence: Set/ACK, reboot restores actual PWM, unchanged save skips writes, torn write returns 8 and preserves saved speed; no ZK settings
+PASS reader288 compatibility: EC version query, 16-bit profile Set/Get, 840.125 MHz ANT4 return loss, invalid writes rejected
+PASS PC control: real UART framing/Tunnel/ZK bridge, CRC, fragmentation, overflow, replay, interlocks, five speeds, Emergency priority, lease expiry, antenna/profile/RL, explicit-write allowlist, timeout/error forwarding
+hmi: hmi transport tests passed
+esp_hmi: ESP32 DWIN stream passed: Emergency priority, CRC, bounded text, truncation, padding, busy transport
+dual: PASS PC/DWIN ownership: LCD motion/reset locked, LCD Emergency releases during PC session, disconnect/timeout unlock with Reset required; real sensor AUTO timeout holds; UART error holds
+PASS dual control: real PC/DWIN/Tunnel/ZK, shared SEMI cycle/EPC/Confirm, PC without LCD, LCD motion, both cross-port STOP/Reset races, fresh Reset, reader power readback, maintenance, USB timeout, RX overflow
+shared_uart: PASS PC/DWIN ownership: LCD motion/reset locked, LCD Emergency releases during PC session, disconnect/timeout unlock with Reset required; real sensor AUTO timeout holds; UART error holds
+PASS dual control: real PC/DWIN/Tunnel/ZK, shared SEMI cycle/EPC/Confirm, PC without LCD, LCD motion, both cross-port STOP/Reset races, fresh Reset, reader power readback, maintenance, USB timeout, RX overflow
+PASS shared UART: native DWIN + ASCII PC, fragmentation, no raw DWIN header in PC TX, STOP preempts queued Reset with ACK, CRC damage stops, partial PC cannot hide LCD STOP, reader bridge
+dwin_manual: PASS DWIN manual: Gate/Scan/Conveyor after Reset, independent IN2/IN7, scan restart/EPC, tap-run/tap-stop, release/repeat filtering, IN3/timeout cutoff, busy/stop/PC locks
+two_doors: PASS independent doors: either closes first, both required before RFID, IN7 loss continues RF/belt, IN2 loss stops via interrupt or polling, separate bounce budgets, missing IN7, homing/opening, Emergency, repeated Reset, second-driver failure
+in7_confirmation: PASS IN7 confirmation: dropout before IN2/reader/ACK/Rescan, no extra closing, real raw status, 50ms debounce, fresh close/Reset/Emergency, missing IN7 timeout, IN2 interlock
+esp_step: PASS 55513 checks: exact 6000/5100 pulses, acceleration/cruise/deceleration, equal pulse halves, stop/resume, EN mapping
+esp_outputs: PASS real ESP output backend: faults HOLD both EN, Emergency RELEASE sticky until Reset; J6/J3 independent timers and limits, J2 forward DIR LOW / Rescan reverse DIR HIGH at 133333 Hz, exact two-door opening count, all pulse outputs stop and both EN release, explicit reset, watchdog
+modbus_integration: PASS Modbus integration: no-DWIN operation, dual-door homing, legacy exclusion, STOP fences stale Reset, timeout cannot be masked by foreign polling
+PASS Modbus real reader bridge: maintenance, four power bytes, repeat suppression, readback, antenna mask, Gen2X profile, allowlist, reader error and timeout
+PASS legacy coexistence with production Modbus hooks: claim exclusion, own heartbeat, immediate deliberate release
+PASS configuration maintenance: DWIN/legacy/Modbus Reset blocked during save, exit fence prevents stale motion
+PASS DWIN Emergency while Modbus owns moving axes; queued remote Reset fenced; local motion/reset remain locked
+PASS selected regression suites

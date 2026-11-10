@@ -1,0 +1,6 @@
+﻿"Topic","Chiều truyền","QoS","Retain","Chu kỳ","Nội dung"
+"<root>/get","Ứng dụng → bo","1","false","Theo yêu cầu","JSON đầy đủ: {""client"":""1111111111111111"",""id"":1}. Chỉ đọc, không claim, không gia hạn lease."
+"<root>/state","Bo → ứng dụng","1","false","Sau yêu cầu /get","Phản hồi: trạng thái máy + EPC + token + registers[0..95]. Ghép request_client/request_id với yêu cầu."
+"<root>/cmd","Ứng dụng → bo","1","false","Theo yêu cầu","Gửi action và JSON đúng schema. Không gửi lệnh retained."
+"<root>/ack","Bo → ứng dụng","1","false","Theo yêu cầu","Kết quả nhận lệnh; đối chiếu session + epoch + client + id."
+"<root>/availability","Bo → ứng dụng","1","true","Khi đổi kết nối","{""online"":true/false}. Có LWT; vẫn phải kiểm tra state mới để điều khiển."

@@ -1,0 +1,11 @@
+Official Espressif esp-usb sources:
+https://github.com/espressif/esp-usb
+Commit fc9bead300f82484eace377d5dea2f3e11163206
+host/class/cdc/usb_host_cdc_acm version 2.4.1
+host/class/cdc/usb_host_cp210x_vcp version 2.2.0
+Apache-2.0; full license included as LICENSE; original SPDX headers retained.
+
+Arduino packaging only: source/private headers placed under src, public headers
+retained under src/usb and src/esp_private. cdc_host_common.h duplicated at
+src root for existing upstream local includes. EspUsbReaderHost.h added as
+an Arduino library discovery entry point. No changes to driver implementation.

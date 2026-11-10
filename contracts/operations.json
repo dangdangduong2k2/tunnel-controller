@@ -1,0 +1,21 @@
+[
+  {"op":1,"method":"reset","params":[],"effect":"Reset lỗi/STOP và khởi tạo lại chu trình; có thể bắt đầu homing/chuyển động."},
+  {"op":2,"method":"gate","params":[["close",0,1]],"effect":"Điều khiển cửa: 1 đóng/homing, 0 mở; còn phụ thuộc trạng thái máy."},
+  {"op":3,"method":"belt","params":[["run",0,1]],"effect":"Băng tải: 0 dừng, 1 chạy thuận trong chế độ điều khiển tay."},
+  {"op":4,"method":"scan","params":[["run",0,1]],"effect":"Inventory RFID thủ công: 0 dừng, 1 bắt đầu."},
+  {"op":5,"method":"mode","params":[["mode",0,1]],"effect":"Chọn chế độ: 0 tự động, 1 bán tự động."},
+  {"op":6,"method":"confirm","params":[],"effect":"Xác nhận kết quả trong bước chờ xác nhận bán tự động."},
+  {"op":7,"method":"rescan","params":[],"effect":"Yêu cầu quét lại trong bước chờ xác nhận."},
+  {"op":8,"method":"speed","params":[["level",1,5]],"effect":"Chọn mức tốc độ băng tải 1..5, lưu theo chính sách SpeedStore."},
+  {"op":9,"method":"maintenance","params":[["enabled",0,1]],"effect":"0 thoát, 1 vào bảo trì để cấu hình reader; dừng chuyển động."},
+  {"op":20,"method":"reader.info","params":[],"effect":"Đọc thông tin reader qua lệnh ZK 0x21."},
+  {"op":21,"method":"antenna.power.get","params":[],"effect":"Đọc công suất bốn cổng antenna, ZK 0x94."},
+  {"op":22,"method":"antenna.power.set","params":[["ant1_dbm",0,30],["ant2_dbm",0,30],["ant3_dbm",0,30],["ant4_dbm",0,30],["ram_only",0,1]],"effect":"Đặt công suất bốn cổng; ram_only=1 chỉ RAM, 0 yêu cầu lưu reader."},
+  {"op":23,"method":"antenna.mask.set","params":[["mask",1,15],["ram_only",0,1]],"effect":"Bit 0..3 bật antenna 1..4; ram_only=1 RAM, 0 lưu reader."},
+  {"op":24,"method":"reader.profile.get","params":[],"effect":"Đọc profile reader, ZK 0x7F một byte."},
+  {"op":25,"method":"reader.profile.set","params":[["encoded",128,255]],"effect":"Gửi byte Set profile ZK đã mã hóa; bridge kiểm tra thêm mask/giá trị hợp lệ."},
+  {"op":26,"method":"reader.gen2x.get","params":[],"effect":"Đọc cấu hình Gen2X, ZK 0x7F ba byte."},
+  {"op":27,"method":"reader.gen2x.set","params":[["value",0,65535]],"effect":"Gửi từ cấu hình Gen2X 16-bit; bridge kiểm tra thêm bitfield."},
+  {"op":28,"method":"reader.ex10.get","params":[],"effect":"Đọc thông tin Ex10, ZK 0xEC."},
+  {"op":29,"method":"antenna.return_loss","params":[["frequency_hi",0,65535],["frequency_lo",0,65535],["antenna",0,3]],"effect":"Đo return loss; tần số 32-bit theo đơn vị/mã hóa ZK, antenna đánh số 0..3."}
+]
