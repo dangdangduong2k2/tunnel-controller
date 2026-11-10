@@ -5,13 +5,11 @@ import json
 import os
 import sys
 import time
-from tunnel_sdk import TunnelDevice, ProtocolError
+from tunnel_sdk import TunnelDevice, ProtocolError, require_accepted
 
 
 def accepted(ack):
-    if not ack.get("accepted"):
-        raise ProtocolError(f"Device rejected command: {ack}")
-    return ack
+    return require_accepted(ack)
 
 
 def read_power(device):

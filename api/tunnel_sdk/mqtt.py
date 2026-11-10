@@ -4,7 +4,7 @@ import time
 import uuid
 from .common import Commands, words, named_words
 from .operations import OPERATIONS
-from .errors import ProtocolError, UnknownOutcome
+from .errors import BusyError, ProtocolError, UnknownOutcome
 from .status import decode_status
 
 
@@ -205,6 +205,13 @@ class Mqtt(Commands):
                             )
                         self.condition.wait(left)
                     ack = self.pending[1]
+                if ack["exception"] == 6 or ack["code"] == 5:
+                    raise BusyError(
+                        "BUSY: MQTT ownership/reader rejection",
+                        code=ack["code"],
+                        exception=ack["exception"],
+                        result=ack["result"],
+                    )
                 if ack["code"]:
                     raise ProtocolError(
                         f"MQTT code {ack['code']}, Modbus exception {ack['exception']}"

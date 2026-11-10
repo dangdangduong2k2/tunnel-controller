@@ -17,10 +17,11 @@ from unittest.mock import patch
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "api"))
 from tunnel_api import Modbus, ProtocolError, crc16
-from tunnel_sdk import TunnelDevice
+from tunnel_sdk import BusyError, TunnelDevice
 
 sys.path.insert(0, str(ROOT / "api/example"))
 from reader_power import read_power
+from device_console import Console
 
 
 class Native:
@@ -141,6 +142,23 @@ def main():
                 "Public TCP API + complete reader example",
             )
             check(not public.has_control(), "Example released TCP ownership")
+            console = Console(public)
+            try:
+                console.run("claim")
+                console.run("maintenance", {"enabled": 1})
+                result = console.run(
+                    "antenna.power.set",
+                    dict(
+                        ant1_dbm=20,
+                        ant2_dbm=21,
+                        ant3_dbm=22,
+                        ant4_dbm=23,
+                        ram_only=1,
+                    ),
+                )
+                check(result["verified"], "TCP console Set/reply/Get readback")
+            finally:
+                console.close()
 
         class SerialIO:
             def __init__(self, *args, **kwargs):
@@ -173,7 +191,7 @@ def main():
             rtu.claim()
             try:
                 tcp_client.claim()
-            except ProtocolError:
+            except BusyError:
                 check(True, "RTU excludes TCP controller")
             else:
                 raise AssertionError("TCP stole RTU")
@@ -186,6 +204,17 @@ def main():
                     "Public RTU API + complete reader example",
                 )
                 check(not public.has_control(), "Example released RTU ownership")
+                console = Console(public)
+                try:
+                    console.run("claim")
+                    console.run("maintenance", {"enabled": 1})
+                    check(
+                        list(console.run("antenna.power.get")["decoded"].values())
+                        == [20, 21, 22, 23],
+                        "RTU console reader completion",
+                    )
+                finally:
+                    console.close()
 
         tcp_client.claim()
         time.sleep(3.1)

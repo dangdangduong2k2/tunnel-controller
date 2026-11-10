@@ -7,12 +7,13 @@
 static unsigned commands = 0, beats = 0, stops = 0, emergencies = 0, readerWrites = 0;
 static uint8_t readerCommand = 0, readerData[5] = {};
 static bool ready = false;
+static uint8_t commandResult = 0;
 static uint16_t read(uint16_t a) {
     return a;
 }
 static uint8_t command(uint8_t, uint16_t) {
     ++commands;
-    return 0;
+    return commandResult;
 }
 static bool reader(uint8_t c, const uint8_t *p, uint8_t n) {
     ++readerWrites;
@@ -192,7 +193,35 @@ static void namedJson() {
     char tiny[32];
     assert(!tunnelmqtt::encodeState(api, read, 100, tiny, sizeof(tiny)));
 }
+static void applicationBusy() {
+    mb::Core c(backend);
+    tunnelmqtt::Api api(c);
+    api.connect("0123456789abcdef");
+    c.tick(100);
+    assert(api.process(request(api, 1, tunnelmqtt::CLAIM), false, 100).code == 0);
+    auto q = request(api, 2, tunnelmqtt::EXECUTE);
+    q.op = 9;
+    q.args[0] = 1;
+    commandResult = 2; // Real Tunnel rejects maintenance during inventory.
+    unsigned before = commands;
+    unsigned stopped = stops;
+    auto r = api.process(q, false, 100);
+    assert(r.code == 0 && r.exception == 0 && r.result == 2);
+    assert(c.owns(mb::MQTT) && stops == stopped && commands == before + 1);
+    commandResult = 0;
+    // Later idle does not cause a refused operation to run on duplicate delivery.
+    r = api.process(q, false, 100);
+    assert(r.result == 2 && commands == before + 1);
+    assert(api.process(request(api, 3, tunnelmqtt::HEARTBEAT), false, 100).code == 0);
+    uint16_t registers[96];
+    api.snapshot(registers);
+    assert(registers[19] == 2 && registers[16] == mb::MQTT);
+    q.id = 4;
+    assert(api.process(q, false, 100).result == 0 && commands == before + 2);
+    puts("PASS MQTT BUSY: application result forwarded, no stop/replay, reads/heartbeat usable");
+}
 int main() {
+    applicationBusy();
     arbitration();
     json();
     namedJson();

@@ -19,10 +19,11 @@ sys.path.insert(0, str(ROOT / "api"))
 spec = importlib.util.spec_from_file_location("tunnel_api", ROOT / "api/tunnel_api.py")
 sdk = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(sdk)
-from tunnel_sdk import TunnelDevice
+from tunnel_sdk import BusyError, TunnelDevice
 
 sys.path.insert(0, str(ROOT / "api/example"))
 from reader_power import read_power
+from device_console import Console
 
 logging.disable(logging.CRITICAL)
 loop = asyncio.new_event_loop()
@@ -181,6 +182,12 @@ try:
     time.sleep(1.6)  # Cached state is stale: _send must fetch a new token first.
     assert a.claim()["accepted"]
     assert a.status()["owner"] == 6
+    try:
+        b.claim()
+        raise AssertionError("Foreign MQTT client stole active session")
+    except BusyError as exc:
+        assert exc.code == 5
+    assert a.has_control()
     assert a.command("maintenance", [1])["accepted"]
     ack = a.call("antenna.power.get")
     assert ack["accepted"]
@@ -204,6 +211,17 @@ try:
     with TunnelDevice.mqtt("127.0.0.1", port=port, root="test/tunnel") as public:
         assert public.get_status()["epc_count"] == 7
         assert read_power(public) == dict.fromkeys(["ANT1", "ANT2", "ANT3", "ANT4"], 30)
+        assert not public.has_control()
+        console = Console(public)
+        try:
+            console.run("claim")
+            console.run("maintenance", {"enabled": 1})
+            assert console.run("antenna.power.get")["decoded"] == dict.fromkeys(
+                ["ANT1", "ANT2", "ANT3", "ANT4"],
+                30,
+            )
+        finally:
+            console.close()
         assert not public.has_control()
     assert all("method" not in c for c in commands[baseline:])
     assert any(c.get("op") == 21 for c in commands[baseline:])

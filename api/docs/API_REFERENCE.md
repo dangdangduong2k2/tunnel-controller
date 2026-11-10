@@ -389,6 +389,11 @@ SDK tự chia tần số kHz thành HI/LO. 840000..960000, chia hết cho100 ho�
 
 ## Lấy kết quả reader
 
+Ví dụ đủ các lệnh, có heartbeat, timeout, readback và BUSY:
+[console dùng chung ba giao thức](../example/README.md).
+`require_accepted(ack)` chuyển `result=2` thành `BusyError`; xem
+[BUSY và vòng đời phiên](STATUS_AND_ERRORS.md#busy-khi-chưa-thể-nhận-lệnh-trong-phiên-hiện-tại).
+
 ```python
 # Sau claim và set_maintenance(1); ứng dụng vẫn lập lịch heartbeat.
 ack = device.get_antenna_power()

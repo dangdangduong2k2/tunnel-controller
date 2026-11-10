@@ -50,6 +50,7 @@ SDK tự đọc HR272 trước OP; không tự retry sau mất ACK.
 | Exception | Cách xử lý |
 |---|---|
 | ValueError | Sửa tên/tham số trước khi gọi lại |
+| BusyError (ProtocolError) | Lệnh bị từ chối do trạng thái/quyền/reader; đọc trạng thái, không tự retry/claim/STOP |
 | ProtocolError | Kiểm tra response, quyền, token hoặc Modbus exception |
 | UnknownOutcome (ProtocolError) | Có thể lệnh đã tới bo; không tự gửi lại lệnh chạy; đọc và đánh giá trạng thái |
 | ReaderError (ProtocolError) | Reply đúng sequence nhưng transport/status/payload lỗi |
@@ -59,3 +60,48 @@ Modbus exception:01 function,02 address,03 value/sequence,04 backend,06 busy/not
 TCP0B wrong unit. MQTT code:0 xử lý;1 invalid;2 session/epoch;3 stale;4 retained;
 5 owner;6 Modbus exception;7 replay;8 client table full. JSON lỗi có thể không ACK.
 Không tự reconnect/claim/run sau lỗi. Ghi nhận lỗi và trạng thái máy trước quyết định mới.
+
+## BUSY khi chưa thể nhận lệnh trong phiên hiện tại
+
+Bo đã gửi phản hồi từ chối; không chỉ chặn ở phần mềm máy tính. Giữ mã wire hiện
+có để PLC/HMI cũ tiếp tục dùng được:
+
+| Trường hợp | TCP / RTU | MQTT `/ack` |
+|---|---|---|
+| Đổi tốc độ khi đang chạy; vào maintenance khi đang scan/chạy; lệnh máy sai trạng thái | FC16 được trả lời, sau đó đọc HR280: `2` | `code=0, exception=0, result=2` |
+| Có reader transaction đang chờ, gửi OP mới | Exception `06`, PDU `90 06` | `code=6, exception=6` |
+| Nguồn khác đang giữ quyền, gửi claim | Exception `06`, PDU `86 06` | `code=5` |
+| Không sở hữu quyền nhưng gửi OP | Exception `06` | `code=5` |
+
+**Result 2 là BUSY/trạng thái/bridge từ chối**, không bảo đảm chỉ cần chờ là thành
+công. Ví dụ bridge cũ cũng trả 2 nếu profile ngoài allowlist. Kiểm tra tham số và
+state trước khi thử lại. SDK không bịa thêm lý do mà firmware chưa cung cấp.
+
+`BUSY` không phải lỗi mạng, không phải lệnh đang xếp hàng. Lệnh bị từ chối không
+được thực thi tự động khi hết bận. Lệnh mới sau khi điều kiện đã phù hợp phải dùng
+sequence/id mới; lặp request cũ có thể chỉ trả lại kết quả đã lưu. ACK `code=0`
+hoặc FC16 thành công **chưa đủ**: luôn kiểm tra cả `result`.
+
+Phân biệt **chu trình scan/giao dịch reader** với **phiên giữ quyền claim**:
+phải kết thúc scan/giao dịch xung đột trước khi cài đặt, nhưng có thể giữ cùng
+claim, heartbeat và vào maintenance khi máy đã rảnh. Không bắt buộc release rồi
+claim lại; claim mới có thể STOP/HOLD chu trình. Confirm/Rescan ở state9 cần cùng
+phiên đang chạy. Đọc state/EPC và heartbeat vẫn dùng được khi BUSY; STOP/Emergency
+có đường xử lý riêng, không bị chặn bởi reader pending.
+
+```python
+from tunnel_sdk import BusyError, require_accepted
+
+# Trong phiên đã claim; việc lập lịch heartbeat thuộc ứng dụng.
+try:
+    ack = require_accepted(device.set_speed(3))
+except BusyError as exc:
+    print("BUSY", exc.result, exc.exception, exc.code)
+    print(device.get_status())
+    # Báo cho operator/caller. Không tự STOP, release, claim hoặc retry.
+```
+
+Không gọi `require_accepted` thì lệnh trả `accepted=False, result=2` như SDK cũ.
+Exception06 và MQTT code5 tự raise `BusyError`. `result/exception/code` trên lỗi
+là mã nhận được; trường không có dùng `None`. BUSY chỉ là phản hồi theo yêu cầu,
+không thêm topic MQTT tự publish.

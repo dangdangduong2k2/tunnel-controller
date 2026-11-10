@@ -184,6 +184,22 @@ static void TestFramingAndInterlocks(void) {
     Run(2U);
     assert(Request(1U, NULL, 0U) == 0U);
 }
+static void TestBusyDuringInventory(void) {
+    uint32_t count;
+    uint8_t speed;
+    PcBoot();
+    ToCenter();
+    count = config_count;
+    speed = Tunnel_GetSpeedLevel();
+    assert(One(0x20U, 1U) == 2U); /* Cannot enter maintenance during this cycle. */
+    assert(One(0x19U, speed == 3U ? 4U : 3U) == 2U);
+    assert(One(0x13U, 1U) == 2U); /* Mode change waits for a permitted state. */
+    assert(One(0x21U, 0x94U) == 2U); /* No reader configuration transaction. */
+    assert(Tunnel_IsPcMaintenance() == 0U && Tunnel_GetSpeedLevel() == speed);
+    assert(config_count == count && rf_on && MotorPwm_IsRunning(CONVEYOR_DRIVER));
+    assert(Request(1U, NULL, 0U) == 0U); /* Status remains readable. */
+    puts("PASS inventory BUSY: maintenance/speed/mode/reader rejected without stopping scan");
+}
 static void TestDuration(void) {
     static const uint16_t periods[5] = {10500U, 7500U, 5000U, 2500U, 1250U};
     uint8_t level, old[2] = {3U, 0U};
@@ -437,6 +453,7 @@ int main(void)
 #endif
 {
     TestPcSupervision();
+    TestBusyDuringInventory();
     TestAntennaPower();
     TestPersistentSpeed();
     TestReader288Compatibility();

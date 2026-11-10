@@ -65,6 +65,9 @@ Tạo client: `TunnelDevice.mqtt("broker.example.com", root="factory/tunnel01/v1
 
 SDK Python hiện cài được bằng `python -m pip install "./api[all]"`.
 API `TunnelDevice` có đủ 19 lệnh; xem [cách gọi từng hàm](api/docs/API_REFERENCE.md).
+SDK **0.1.1** có [console đủ 19 lệnh](api/example/README.md) dùng chung RTU/TCP/MQTT,
+giữ phiên Confirm/Rescan, kiểm tra readback và báo [BUSY](api/docs/STATUS_AND_ERRORS.md#busy-khi-chưa-thể-nhận-lệnh-trong-phiên-hiện-tại)
+khi bo từ chối. Firmware đã có mã BUSY; SDK không tự retry hay giành quyền.
 Xuất bộ SDK độc lập: `python tools/export_sdk.py <thu-muc-moi>` rồi build trong thư mục đó.
 
 ## Thành phần

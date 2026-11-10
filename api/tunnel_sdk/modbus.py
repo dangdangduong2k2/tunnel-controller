@@ -4,7 +4,7 @@ import threading
 import time
 from .common import Commands, crc16, words
 from .operations import OPERATIONS
-from .errors import ProtocolError, UnknownOutcome
+from .errors import BusyError, ProtocolError, UnknownOutcome
 from .status import decode_status
 
 
@@ -106,6 +106,8 @@ class Modbus(Commands):
                         raise OSError("Invalid MBAP response")
                     result = self._exact(length - 1)
                 if result[0] == (pdu[0] | 128) and len(result) == 2:
+                    if result[1] == 6:
+                        raise BusyError("BUSY: Modbus exception 6 (ownership/reader)", exception=6)
                     raise ProtocolError("Modbus exception " + str(result[1]))
                 if result[0] != pdu[0]:
                     raise OSError("Wrong function")

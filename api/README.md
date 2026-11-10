@@ -9,7 +9,11 @@ Chọn đúng giao thức đang dùng để xem cách kết nối và **toàn b�
 
 Cả ba giao thức hỗ trợ đủ19 OP hiện có của firmware. Tên hàm Python giống nhau;
 kết nối, cách truyền lệnh và cách quản lý phiên được ghi riêng ở từng mục.
-SDK 0.1.0, Python 3.10+. Modbus dùng map từ firmware 1.10.2; MQTT cần firmware 1.11.0+.
+SDK 0.1.1, Python 3.10+. Modbus dùng map từ firmware 1.10.2; MQTT cần firmware 1.11.0+.
+
+Ví dụ chạy đủ **19 lệnh trên cả RTU, TCP/IP và MQTT**: [device_console.py](example/device_console.py).
+Xem [bảng lệnh và các tình huống](example/README.md): giữ phiên Confirm/Rescan, cài
+reader có readback, BUSY, mất quyền, timeout và kết thúc phiên.
 
 ## Cài SDK
 

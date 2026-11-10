@@ -186,7 +186,42 @@ static void TestDwinStopWithModbusOwner(void) {
     puts("PASS DWIN Emergency while Modbus owns moving axes; queued remote Reset fenced; local "
          "motion/reset remain locked");
 }
+static void TestSessionBusy(void) {
+    uint32_t count;
+    MbBoot();
+    /* Owner remains in maintenance: motion must be rejected, never queued. */
+    MbCommand(1, 9, 1, 0, 0, 0, 0);
+    DualRun(5);
+    assert(Tunnel_IsPcMaintenance());
+    count = tunnel_test_motors[CONVEYOR_DRIVER].start_continuous_calls;
+    MbCommand(2, 3, 1, 0, 0, 0, 0);
+    DualRun(5);
+    assert(MbTest_Exception() == 0 && MbTest_Reg(19) == 2);
+    assert(MbTest_Reg(16) == 1 && Tunnel_IsPcMaintenance());
+    assert(tunnel_test_motors[CONVEYOR_DRIVER].start_continuous_calls == count);
+    /* Reader is in flight: reject another transaction, keep old sequence/data. */
+    config_drop = 1;
+    MbCommand(3, 21, 0, 0, 0, 0, 0);
+    DualRun(5);
+    assert(MbTest_Reg(20) == 1);
+    count = config_count;
+    MbCommand(4, 22, 20, 20, 20, 20, 1);
+    DualRun(5);
+    assert(MbTest_Exception() == 6 && config_count == count);
+    assert(MbTest_Reg(21) == 3 && MbTest_Reg(18) == 3);
+    MbSingle(1, 256, 1); /* Heartbeat still works during BUSY. */
+    DualRun(5);
+    assert(MbTest_Exception() == 0 && MbTest_Reg(16) == 1);
+    MbSingle(2, 258, 1); /* STOP remains available from another interface. */
+    DualRun(5);
+    CheckStopped();
+    assert(MbTest_Reg(16) == 0 && config_count == count);
+    config_drop = 0;
+    puts("PASS session BUSY: motion blocked in maintenance, pending Set not queued, "
+         "owner/reply preserved, status/heartbeat/STOP available");
+}
 int main(void) {
+    TestSessionBusy();
     TestModbusOnly();
     TestModbusReader();
     TestLegacyWithModbus();
