@@ -44,7 +44,7 @@ mqtt_demo.py: chương trình chỉ đọc trạng thái, không claim, không g
 mqtt_read_power.py: bài test claim/maintenance/đọc công suất/nhả quyền, tự heartbeat khi chờ.
 Bài test này có STOP/HOLD khi claim; chỉ chạy lúc máy rảnh. Không ghi cấu hình RF.
 tunnel_api.py: SDK hiện có, tương thích API MQTT của firmware 1.11.0.
-examples/: JSON minh họa. Không dùng nguyên token/thời gian mẫu để gửi vào bo.
+../../example/: JSON minh họa đã được gom vào thư mục example chung. Không dùng nguyên token/thời gian mẫu để gửi vào bo.
 
 3. TEST NHANH BẰNG PYTHON 3.10+
 Mở terminal tại thư mục này:

@@ -4,6 +4,58 @@ Source ESP32-S3 cho bo Tunnel: điều khiển hai cửa, băng tải, reader ZK
 
 Bản này chuẩn hóa từ 1.11.0: tách module, tách SDK, gom contract, thêm MQTT theo tên và tài liệu. Giữ nguyên thuật toán chu trình, map thanh ghi, OP và cấu hình NVS. Đây là source để build/kiểm thử; không tự nạp vào bo khi chạy build hoặc test.
 
+## SDK theo giao thức
+
+Chọn giao thức để xem danh sách hàm, tham số kết nối và ví dụ riêng.
+
+### Modbus RTU / RS485
+
+USB-RS485, mặc định ID 1 / 19200 / 8E1. PLC hoặc máy tính là master, bo là slave.
+
+Tạo client: `TunnelDevice.rtu("COM7", baud=19200, parity="E", unit=1)`; dùng `connect()` hoặc `with` để mở kết nối.
+
+| Nhóm | Hàm được cung cấp |
+|---|---|
+| Kết nối / đọc | `connect`, `is_connected`, `close`, `get_status`, `get_epc_count`, `get_functions` |
+| Quyền điều khiển / dừng | `claim`, `has_control`, `heartbeat`, `release`, `stop`, `emergency` |
+| Máy | `reset`, `set_gate`, `set_belt`, `set_scan`, `set_mode`, `confirm`, `rescan`, `set_speed`, `set_maintenance` |
+| Reader / antenna | `get_reader_info`, `get_antenna_power`, `set_antenna_power`, `set_antenna_mask`, `get_rf_profile`, `set_rf_profile`, `get_gen2x`, `set_gen2x`, `get_ex10`, `measure_return_loss` |
+| Gọi lệnh / lấy kết quả | `send_command`, `execute`, `get_reader_result` |
+
+[Xem cách gọi từng hàm Modbus RTU / RS485 và ví dụ](api/README.md#modbus-rtu).
+
+### Modbus TCP/IP
+
+RJ45; dùng IP thực tế trên DWIN. Mặc định TCP 502, Unit ID 1. Giữ cùng socket khi điều khiển.
+
+Tạo client: `TunnelDevice.tcp("192.168.1.211", port=502, unit=1)`; dùng `connect()` hoặc `with` để mở kết nối.
+
+| Nhóm | Hàm được cung cấp |
+|---|---|
+| Kết nối / đọc | `connect`, `is_connected`, `close`, `get_status`, `get_epc_count`, `get_functions` |
+| Quyền điều khiển / dừng | `claim`, `has_control`, `heartbeat`, `release`, `stop`, `emergency` |
+| Máy | `reset`, `set_gate`, `set_belt`, `set_scan`, `set_mode`, `confirm`, `rescan`, `set_speed`, `set_maintenance` |
+| Reader / antenna | `get_reader_info`, `get_antenna_power`, `set_antenna_power`, `set_antenna_mask`, `get_rf_profile`, `set_rf_profile`, `get_gen2x`, `set_gen2x`, `get_ex10`, `measure_return_loss` |
+| Gọi lệnh / lấy kết quả | `send_command`, `execute`, `get_reader_result` |
+
+[Xem cách gọi từng hàm Modbus TCP/IP và ví dụ](api/README.md#modbus-tcp).
+
+### MQTT
+
+Bo và ứng dụng cùng broker/root. Đọc /get → /state, lệnh /cmd → /ack; heartbeat do ứng dụng chủ động gửi.
+
+Tạo client: `TunnelDevice.mqtt("broker.example.com", root="factory/tunnel01/v1")`; dùng `connect()` hoặc `with` để mở kết nối.
+
+| Nhóm | Hàm được cung cấp |
+|---|---|
+| Kết nối / đọc | `connect`, `is_connected`, `close`, `get_status`, `get_epc_count`, `get_functions` |
+| Quyền điều khiển / dừng | `claim`, `has_control`, `heartbeat`, `release`, `stop`, `emergency` |
+| Máy | `reset`, `set_gate`, `set_belt`, `set_scan`, `set_mode`, `confirm`, `rescan`, `set_speed`, `set_maintenance` |
+| Reader / antenna | `get_reader_info`, `get_antenna_power`, `set_antenna_power`, `set_antenna_mask`, `get_rf_profile`, `set_rf_profile`, `get_gen2x`, `set_gen2x`, `get_ex10`, `measure_return_loss` |
+| Gọi lệnh / lấy kết quả | `send_command`, `execute`, `get_reader_result` |
+
+[Xem cách gọi từng hàm MQTT và ví dụ](api/README.md#mqtt).
+
 ## Bắt đầu
 
 1. Đọc [phần cứng](docs/HARDWARE.md), [build/test](docs/BUILD_TEST.md).

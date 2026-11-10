@@ -63,7 +63,7 @@ Nếu báo Cleanup not confirmed, kiểm tra owner/maintenance trên state; leas
 5. TRA CỨU ĐỂ VIẾT ỨNG DỤNG
 Tab Lệnh MQTT: mỗi dòng có chức năng, topic, phần JSON, tác động và phản hồi cần kiểm tra.
 Riêng /cmd: payload hoàn chỉnh = 5 trường chung session/epoch/client/id/seen_ms + phần JSON của dòng.
-Không gửi riêng phần JSON rút gọn trong bảng. examples/commands.example.json có mẫu đầy đủ.
+Không gửi riêng phần JSON rút gọn trong bảng. ../../example/commands.example.json có mẫu đầy đủ.
 Ví dụ complete cho OP21 (phải thay token/thời gian bằng state vừa nhận):
 {"session":"0123456789abcdef","epoch":2,"client":"1111111111111111","id":3,"seen_ms":123900,"action":"execute","op":21,"args":[0,0,0,0,0,0]}
 Publish tới <root>/cmd, QoS 1, retain=false. Chỉ publish object payload trong file ví dụ.
