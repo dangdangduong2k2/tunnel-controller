@@ -1,5 +1,9 @@
 # Tunnel IoT Python SDK
 
+**[User Guide tiếng Việt - VI 1.1, 28 trang](docs/Tunnel_User_Guide_VI.pdf)** (cập nhật 17/11/2026).
+
+Hướng dẫn kết nối Modbus TCP theo DHCP/Static (trang 24), cài đặt HMI, MQTT, OTA và scan độc lập (trang 25-28); kèm bảng thanh ghi và lệnh của ba giao thức. Guide cập nhật theo firmware **1.16.4**; các mục HMI/OTA cần firmware và gói màn tương ứng. Kiểm tra phiên bản thực tế của bo tại IR1 trước khi áp dụng.
+
 Chọn đúng giao thức đang dùng để xem cách kết nối và **toàn bộ hàm của giao thức đó**:
 
 - [1. Modbus RTU / RS485](#modbus-rtu): COM, baud, Slave ID, hàm đọc/ghi và ví dụ RTU.

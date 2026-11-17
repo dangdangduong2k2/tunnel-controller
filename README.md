@@ -1,5 +1,9 @@
 # Tunnel Controller 1.12.3
 
+**[User Guide tiếng Việt - VI 1.1, 28 trang](api/docs/Tunnel_User_Guide_VI.pdf)** (cập nhật 17/11/2026).
+
+Hướng dẫn kết nối Modbus TCP theo DHCP/Static (trang 24), cài đặt HMI, MQTT, OTA và scan độc lập (trang 25-28); kèm bảng thanh ghi và lệnh của ba giao thức. Guide cập nhật theo firmware **1.16.4**; các mục HMI/OTA cần firmware và gói màn tương ứng. Kiểm tra phiên bản thực tế của bo tại IR1 trước khi áp dụng.
+
 Source ESP32-S3 cho bo Tunnel: điều khiển hai cửa, băng tải, reader ZK-7182M, màn DWIN; PLC/HMI sử dụng Modbus TCP hoặc Modbus RTU, phần mềm sử dụng MQTT. Ba giao thức dùng chung trạng thái máy và quyền điều khiển.
 
 Bản này chuẩn hóa từ 1.11.0: tách module, tách SDK, gom contract, thêm MQTT theo tên và tài liệu. Giữ nguyên thuật toán chu trình, map thanh ghi, OP và cấu hình NVS. Đây là source để build/kiểm thử; không tự nạp vào bo khi chạy build hoặc test.
