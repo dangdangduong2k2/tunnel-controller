@@ -205,7 +205,7 @@ static void TestBusyDuringInventory(void) {
     puts("PASS inventory BUSY: maintenance/speed/mode/reader rejected without stopping scan");
 }
 static void TestDuration(void) {
-    static const uint16_t periods[5] = {10500U, 7500U, 5000U, 2500U, 1250U};
+    static const uint16_t periods[5] = {10500U, 9000U, 7500U, 6250U, 5000U};
     uint8_t level, old[2] = {3U, 0U};
     PcBoot();
     assert(Request(0x14U, old, 2U) == 7U);
@@ -215,6 +215,8 @@ static void TestDuration(void) {
         assert(Tunnel_GetSpeedLevel() == level);
         assert(One(0x11U, 1U) == 0U);
         assert(tunnel_test_motors[CONVEYOR_DRIVER].period_ns == periods[level - 1U]);
+        assert(periods[level - 1U] >= 5000U); /* never exceed working old level 3 */
+        if (level > 1U) assert(periods[level - 1U] < periods[level - 2U]);
         assert(One(0x19U, 1U) == 2U); /* No period jump while moving. */
         assert(One(0x11U, 0U) == 0U);
         Run(10U);
@@ -234,9 +236,9 @@ static void TestPersistentSpeed(void) {
     Tunnel_Init();
     ZK7182_TransportReady();
     Wait(TUNNEL_WAIT_SS1_LOW, 1500U);
-    assert(Request(1U, NULL, 0U) == 0U && reply[19] == 4U && reply[21] == 9U);
+    assert(Request(1U, NULL, 0U) == 0U && reply[19] == 4U && reply[21] == 24U);
     assert(One(0x11U, 1U) == 0U);
-    assert(tunnel_test_motors[CONVEYOR_DRIVER].period_ns == 2500U);
+    assert(tunnel_test_motors[CONVEYOR_DRIVER].period_ns == 6250U);
     assert(One(0x11U, 0U) == 0U);
     Run(10U);
     speed_test_fail_after = 2;
@@ -253,6 +255,19 @@ static void TestPersistentSpeed(void) {
     assert(config_count == 0U);
     puts("PASS PC speed persistence: Set/ACK, reboot restores actual PWM, unchanged save skips "
          "writes, torn write returns 8 and preserves saved speed; no ZK settings");
+}
+static void TestStartupMaintenance(void) {
+    uint8_t i;
+    PcBoot();
+    Tunnel_Init();
+    assert(Tunnel_GetState() == TUNNEL_STARTUP_WAIT && ZK7182_IsReady());
+    Tunnel_PcHeartbeat();
+    assert(Tunnel_RemoteCommand(0x20U, 1U) == 0U && Tunnel_IsPcMaintenance());
+    assert(Tunnel_GetState() == TUNNEL_STARTUP_WAIT);
+    for (i=0U; i<MOTOR_PWM_DRIVER_COUNT; ++i) assert(!MotorPwm_IsRunning((MotorPwmId)i));
+    assert(Tunnel_RemoteCommand(0x11U, 1U) == 2U);
+    assert(Tunnel_RemoteCommand(0x20U, 0U) == 0U && !Tunnel_IsPcMaintenance());
+    puts("PASS reader maintenance at startup: no homing or motor start");
 }
 static void TestZkBridge(void) {
     uint8_t ant[] = {0x3FU, 0x85U}, profile[] = {0x7FU, 0xCDU};
@@ -457,6 +472,7 @@ int main(void)
 #endif
 {
     TestPcSupervision();
+    TestStartupMaintenance();
     TestBusyDuringInventory();
     TestAntennaPower();
     TestPersistentSpeed();

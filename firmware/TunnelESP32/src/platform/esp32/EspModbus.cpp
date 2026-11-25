@@ -13,7 +13,11 @@
 #include "EspPlatform.h"
 #include "EspModbus.h"
 #include "EspMqtt.h"
-#include "../../hmi/HmiNetwork.h"
+#include "EspFota.h"
+#include "EspHmiUi.h"
+#include "EspHmiAntenna.h"
+#include "EspDwinUpdate.h"
+#include "EspHistory.h"
 #include "EspConfig.h"
 #include "../../protocol/modbus/ModbusConfig.h"
 #include "../../protocol/modbus/ModbusCore.h"
@@ -28,7 +32,6 @@ static bool stopQueued = false;
 static std::atomic<bool> serialFault(false), queueFault(false);
 static uint32_t networkStarted = 0;
 static bool fallbackApplied = false;
-static HmiNetworkPublisher hmiNetwork;
 static uint16_t readStatus(uint16_t a) {
     uint32_t value;
     switch (a) {
@@ -257,6 +260,7 @@ static bool tcpRequest(unsigned i) {
 }
 extern "C" void EspModbusBegin(void) {
     EspConfigBegin();
+    EspHistoryBegin();
     const cfg::Settings &settings = EspConfigGet();
     rtuQueue = xQueueCreate(4, sizeof(RtuFrame));
     rtuRxLock = xSemaphoreCreateMutex();
@@ -309,6 +313,7 @@ extern "C" void EspModbusBegin(void) {
             ethernetReady = ETH.config(IPAddress(settings.ip), IPAddress(settings.gateway),
                                        IPAddress(settings.mask), IPAddress(settings.dns));
     }
+    EspFotaBegin();
     EspMqttBegin(core);
     networkStarted = millis();
     EspConfigWebBegin();
@@ -317,6 +322,8 @@ extern "C" void EspModbusBegin(void) {
 extern "C" void EspModbusPoll(void) {
     if (!started)
         return;
+    EspHmiAntennaPoll();
+    core.inhibit(EspFotaBusy() || EspHmiAntennaBusy() || EspDwinUpdateHold());
     core.tick(millis());
     cfg::Safety safety = {core.active(), false,
                           ZK7182_IsScanActive() || ZK7182_IsInventoryRunning(),
@@ -324,6 +331,11 @@ extern "C" void EspModbusPoll(void) {
     for (unsigned i = 0; i < 4; i++)
         if (MotorPwm_IsRunning((MotorPwmId)i))
             safety.moving = true;
+    bool fotaSafe = cfg::canApply(safety) && !EspConfigBusy() &&
+        (Tunnel_GetState()==TUNNEL_STARTUP_WAIT || Tunnel_GetState()==TUNNEL_STOPPED ||
+         Tunnel_GetState()==TUNNEL_MANUAL || Tunnel_GetState()==TUNNEL_WAIT_SS1_LOW ||
+         Tunnel_GetState()==TUNNEL_WAIT_REARM);
+    if (EspFotaBusy() || EspHmiAntennaBusy() || EspDwinUpdateHold()) safety.owner = true;
     EspConfigPoll(safety);
     if (EspConfigBusy())
         return;
@@ -336,20 +348,21 @@ extern "C" void EspModbusPoll(void) {
         EspConfigSetFallback(fallbackApplied);
     }
     EspMqttPoll();
+    EspFotaPoll(!EspDwinUpdateHold() && fotaSafe && !EspHmiAntennaBusy() && !core.active() && !core.readerBusy() && !(readStatus(6)&15) && !EspConfigBusy() && !EspHistoryWriting(),EspMqttSession(),EspMqttEpoch());
+    core.inhibit(EspFotaBusy() || EspHmiAntennaBusy() || EspDwinUpdateHold());
     if (stopQueued)
         return;
-    HmiNetworkStatus hmiStatus = {};
-    hmiStatus.link = ETH.linkUp();
-    hmiStatus.hasIp = ETH.hasIP();
-    hmiStatus.fallback = fallbackApplied;
-    hmiStatus.mqttConnected = EspMqttConnected();
-    const IPAddress ip = ETH.localIP(), mask = ETH.subnetMask(), gateway = ETH.gatewayIP();
-    for (unsigned i = 0; i < 4; i++) {
-        hmiStatus.ip[i] = ip[i];
-        hmiStatus.mask[i] = mask[i];
-        hmiStatus.gateway[i] = gateway[i];
-    }
-    hmiNetwork.poll(millis(), EspConfigGet(), hmiStatus);
+    // Same task as the DWIN parser and the machine state machine: everything the
+    // panel UI and the history read here is owned by this task.
+    // A firmware update counts as "machine busy": no history flash write is
+    // started and the panel refuses editing/Apply/speed until it has ended.
+    // (An update is likewise not granted while a history chunk is being written.)
+    const bool fota = EspFotaBusy();
+    const bool active = safety.moving || safety.scanning || safety.readerPending;
+    EspHistoryPoll(EspMachineQuiet(active) && !fota && !EspHmiAntennaBusy() && !EspDwinUpdateHold(), ethernetReady && ETH.hasIP());
+    if (!EspDwinUpdateHold()) EspHmiUiPoll(core.active(), ethernetReady, active || fota || EspHmiAntennaBusy());
+    // A touch can start a job in this pass. Fence TCP/RTU before processing them.
+    core.inhibit(EspFotaBusy() || EspHmiAntennaBusy() || EspDwinUpdateHold());
     if (queueFault.exchange(false) && core.owns(mb::RTU))
         core.disconnect(mb::RTU);
     networkPoll();
@@ -383,6 +396,7 @@ extern "C" void EspModbusFence(void) {
     if (!started)
         return;
     stopQueued = false;
+    EspHmiAntennaCancel();
     EspMqttFence();
     // Serialize the UART capture with the stop fence: a callback that began
     // before STOP must not enqueue its stale Reset after the queue is cleared.
@@ -413,6 +427,7 @@ extern "C" void EspModbusFence(void) {
         }
     }
     EspConfigFenced();
+    EspFotaFence();
 }
 extern "C" uint32_t EspModbusControlLeaseMs(void) {
     return core.controlLeaseMs();
@@ -420,12 +435,15 @@ extern "C" uint32_t EspModbusControlLeaseMs(void) {
 extern "C" uint8_t EspModbusActive(void) {
     return core.active();
 }
+extern "C" uint8_t EspModbusReaderBusy(void) {
+    return core.readerBusy();
+}
 extern "C" uint8_t EspModbusRtuReady(void) {
     return serialReady;
 }
 extern "C" uint8_t EspModbusLegacyAllow(uint8_t command) {
     core.tick(millis());
-    if (EspConfigBusy() && command != 0x17)
+    if ((EspConfigBusy() || EspFotaBusy() || EspHmiAntennaBusy() || EspDwinUpdateHold()) && command != 0x17)
         return 0;
     if (stopQueued && command != 0x17)
         return 0;

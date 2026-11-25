@@ -7,8 +7,9 @@ from .operations import OPERATIONS
 from .modbus import Modbus
 from .mqtt import Mqtt
 from .device import TunnelDevice
+from .fota import FotaClient
 
-__version__ = "0.1.4"
+__version__ = "0.1.5"
 
 
 def from_settings(settings):
@@ -38,6 +39,7 @@ def from_settings(settings):
 
 __all__ = [
     "BusyError",
+    "FotaClient",
     "require_accepted",
     "TunnelDevice",
     "ReaderError",

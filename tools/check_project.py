@@ -9,7 +9,8 @@ import sys
 from urllib.parse import unquote
 
 ROOT = Path(__file__).resolve().parents[1]
-EXCLUDED = {"build", "test_build", "dist", ".venv", "__pycache__"}
+# Machine-local credential notes are gitignored and are not project documentation.
+EXCLUDED = {"build", "test_build", "dist", ".venv", "__pycache__", "private"}
 
 
 def main():

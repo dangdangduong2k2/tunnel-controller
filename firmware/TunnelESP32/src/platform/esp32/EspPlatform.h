@@ -22,14 +22,21 @@ void EspPcTransmit(const uint8_t *, uint16_t);
 void EspPcPoll(void);
 void EspLog(const char *);
 uint8_t EspHmiTransmit(const uint8_t *, uint16_t);
+/* Panel UART transmitter: completely idle; free queue bytes; a PC reply is waiting. */
+uint8_t EspHmiTxIdle(void);
+uint16_t EspHmiTxFree(void);
+uint8_t EspPcTxPending(void);
 void EspHmiCapture(void);
 void EspHmiEmergency(void);
 void EspRequestEmergency(void);
 void EspRequestSafetyStop(uint8_t reason);
+/* OTA's own STOP fence; external stops still cancel OTA. */
+void EspRequestUpdateFence(void);
 uint8_t EspResetReason(void);
 uint8_t EspTakeEmergencyRequest(void);
 void EspFenceSerialInput(void);
 void EspPollSensorEdges(void);
+uint8_t EspModbusReaderBusy(void);
 #ifdef __cplusplus
 }
 #endif

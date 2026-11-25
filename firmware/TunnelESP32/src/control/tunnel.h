@@ -55,6 +55,8 @@ typedef enum {
 } TunnelFault;
 
 void Tunnel_Init(void);
+/* Separate-button panel migration: legacy value 1 becomes STOP-only, never START. */
+void Tunnel_SetHmiScanExplicit(uint8_t enabled);
 void Tunnel_Process(void);
 /* Short ISR-safe motor cutoff; called after HAL_IncTick, no UART/USB work. */
 void Tunnel_Tick1ms(void);
@@ -72,6 +74,15 @@ uint16_t Tunnel_GetConveyorArr(void);
 uint32_t Tunnel_GetScanDurationMs(void);
 uint32_t Tunnel_GetActiveScanDurationMs(void);
 uint32_t Tunnel_GetScanElapsedMs(void);
+/* Result observer, default none. Called on the control task exactly once per
+ * finalized result: SEMI AUTO when the result is confirmed (DWIN or remote)
+ * and the gate opening has started, AUTO when the gate has opened after a
+ * cycle without a recorded fault. Rescan, manual scan, faults and stops never
+ * call it. cycle_token is the entry tick of the state being finalized, so a
+ * repeated report of the same result carries the same token. The hook must
+ * return quickly: no flash, UART or network work. */
+typedef void (*TunnelFinalizeHook)(uint8_t semi, uint16_t quantity, uint32_t cycle_token);
+void Tunnel_SetFinalizeHook(TunnelFinalizeHook hook);
 
 #ifdef __cplusplus
 }

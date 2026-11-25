@@ -11,6 +11,7 @@
 #include "EspPlatform.h"
 #include "EspMqtt.h"
 #include "EspModbus.h"
+#include "EspDwinUpdate.h"
 #include "../../web/ConfigPage.h"
 
 static Preferences prefs;
@@ -80,6 +81,7 @@ static bool same(const void *a, const void *b, size_t length) {
         different |= x[i] ^ y[i];
     return different == 0;
 }
+bool EspConfigStorageReady() { return storageReady; }
 const cfg::Settings &EspConfigGet() {
     return active;
 }
@@ -97,6 +99,33 @@ static bool submit(const cfg::Settings &s, bool physical) {
     ++job;
     phase = REQUESTED;
     return true;
+}
+uint8_t EspConfigSubmitLocal(const cfg::Settings &next) {
+    if (!storageReady)
+        return 2;
+    cfg::Settings s = next;
+    s.adminSet = active.adminSet;
+    memcpy(s.adminSalt, active.adminSalt, sizeof(s.adminSalt));
+    memcpy(s.adminHash, active.adminHash, sizeof(s.adminHash));
+    uint8_t result = cfg::validate(s) ? 1 : submit(s, false) ? 0 : 3;
+    memset(&s, 0, sizeof(s));
+    return result;
+}
+uint8_t EspConfigApplyState() {
+    switch (phase.load()) {
+    case IDLE:
+        return 0;
+    case DENIED:
+        return 2;
+    case WRITE_FAILED:
+    case FAIL_FENCING:
+    case FAILED:
+        return 3;
+    case SAVED:
+        return 4;
+    default:
+        return 1;
+    }
 }
 extern "C" uint8_t EspConfigBusy(void) {
     int p = phase.load();
@@ -310,18 +339,19 @@ static const char *phaseName(int p) {
 static esp_err_t status(httpd_req_t *r) {
     if (!authorized(r))
         return ESP_OK;
-    char answer[400];
+    char answer[640];
     IPAddress ip = ETH.localIP();
     snprintf(answer, sizeof(answer),
              "{\"firmware\":\"" TUNNEL_VERSION
              "\",\"ip\":\"%u.%u.%u.%u\",\"link\":%s,\"fallback\":%s,\"storage_ready\":%s,\"can_"
              "apply\":%s,\"phase\":\"%s\",\"job\":%lu,\"mqtt_enabled\":%s,\"mqtt_connected\":%s,"
-             "\"rtu_ready\":%s}",
+             "\"rtu_ready\":%s,\"dwin_update\":\"%s\",\"dwin_stage\":\"%s\",\"dwin_hold\":%s}",
              ip[0], ip[1], ip[2], ip[3], ETH.linkUp() ? "true" : "false",
              fallback ? "true" : "false", storageReady ? "true" : "false", safe ? "true" : "false",
              phaseName(phase.load()), (unsigned long)job.load(),
              active.mqttEnabled ? "true" : "false", EspMqttConnected() ? "true" : "false",
-             EspModbusRtuReady() ? "true" : "false");
+             EspModbusRtuReady() ? "true" : "false", EspDwinUpdateStatus(), EspDwinUpdateStage(),
+             EspDwinUpdateHold() ? "true" : "false");
     return respond(r, "200 OK", answer);
 }
 static esp_err_t save(httpd_req_t *r) {

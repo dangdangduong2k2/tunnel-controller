@@ -17,7 +17,7 @@ arduino-cli core install esp32:esp32@3.3.8 --additional-urls https://espressif.g
 
 Nếu CLI không nằm trên PATH, dùng `--cli "đường dẫn arduino-cli.exe"` hoặc biến `ARDUINO_CLI`. Tool cũng tìm CLI đi kèm Arduino IDE ở Program Files. Không tự cài core hoặc tự đổi core trong build.
 
-Output: `dist/TunnelESP32_v1_12_3_app.bin`, `dist/SHA256SUMS.txt`, `dist/build.json`. Đây là **app image**, không phải merged flash image. `build/` là cache có thể tái tạo. Các bước này không mở COM, không upload.
+Output hiện tại: `dist/TunnelESP32_v1_17_0_app.bin`, `dist/SHA256SUMS.txt`, `dist/build.json`. Tên và mã phiên bản theo `contracts/release.json`. Đây là **app image**, không phải merged flash image. `build/` là cache có thể tái tạo. Các bước này không mở COM, không upload.
 
 ## Chạy test
 
@@ -44,7 +44,7 @@ Test Python broker chỉ bind127.0.0.1, dùng cổng động. Modbus RTU đượ
 .venv\Scripts\python.exe tools\generate.py --check
 ```
 
-Generated file không sửa tay và không format độc lập. Không format thư viện vendored; giữ diff/license upstream. File Python dùng Ruff format; C/C++ dùng `.clang-format`. Đây là quy ước project, không tuyên bố tuân thủ chứng nhận MISRA.
+`HmiLayout.h` và `contracts/hmi_fields.json` sinh từ gói màn DWIN (nằm ngoài repo): `python tools\generate_hmi.py <thư mục Tunnel_HMI_DWIN_Package_v2>`, thêm `--check` để so. Generated file không sửa tay và không format độc lập. Không format thư viện vendored; giữ diff/license upstream. File Python dùng Ruff format; C/C++ dùng `.clang-format`. Đây là quy ước project, không tuyên bố tuân thủ chứng nhận MISRA.
 
 ## Nạp có chủ đích
 
@@ -52,6 +52,6 @@ Trước khi nạp: xác định đúng bo/COM, tắt nguồn công suất motor
 
 Với **bo hiện tại đã có partition default_8MB và app ở0x10000**, dùng esptool ghi app mới tại0x10000 rồi verify SHA/digest. Không ghi app vào0x0. Nếu layout/chip/flash khác, phải đọc partition và xác minh trước; bo trắng cần bootloader/partition/boot app phù hợp từ build, không chỉ app.bin. Không chạy erase-all như một bước mặc định.
 
-Sau nạp: đọc firmware=1123, owner/fault/motor trạng thái, xem IP và RTU trên DWIN; test đọc TCP trước. Kiểm tra MQTT `/get`/correlation; RS485 cần USB-RS485 và đúng baud/parity đang lưu. Chỉ thử chuyển động khi operator xác nhận cơ khí sẵn sàng.
+Sau nạp: đọc firmware=1170 (bản 1.17.0), owner/fault/motor trạng thái, xem IP và RTU trên DWIN; test đọc TCP trước. Kiểm tra MQTT `/get`/correlation; RS485 cần USB-RS485 và đúng baud/parity đang lưu. Chỉ thử chuyển động khi operator xác nhận cơ khí sẵn sàng.
 
 Rollback: khi đã lưu app cũ và partition không đổi, ghi lại app cũ tại offset đã xác minh. Schema NVS1 và namespace tốc độ được giữ nguyên trong1.12.0; không cần xóa cấu hình để rollback1.11.0. Cấu hình broker/mạng/RTU hiện lưu trên bo không được suy ra từ defaults trong source.

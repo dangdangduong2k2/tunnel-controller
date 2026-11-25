@@ -4,6 +4,9 @@
 uint32_t testClock = 11000;
 int testButton = 1, testRestarts = 0;
 static unsigned testStops = 0;
+const char *EspDwinUpdateStatus() { return "already_current"; }
+const char *EspDwinUpdateStage() { return "current"; }
+extern "C" uint8_t EspDwinUpdateHold() { return 0; }
 #include "../firmware/TunnelESP32/src/platform/esp32/EspConfig.cpp"
 extern "C" void EspRequestSafetyStop(uint8_t) {
     ++testStops;
@@ -144,9 +147,72 @@ static void tests() {
     assert(request("login", "{\"password\":\"admin\"}", false).status == "429 Too Many Requests");
     testClock += 10000;
     assert(signIn("admin")); // rate limit expires across millis wrap
+    // Local DWIN panel apply: the same fence -> NVS -> restart job as the web
+    // handler, no admin password needed, admin account never changed.
+    boot();
+    assert(signIn("admin"));
+    char body[120];
+    snprintf(body, sizeof(body), "{\"revision\":%lu,\"admin_password\":\"panel-admin-123\"}",
+             (unsigned long)revision);
+    assert(request("config", body).status == "202 Accepted");
+    step();
+    assert(phase == SAVED);
+    testClock += 1600;
+    EspConfigPoll(safetyState);
+    boot();
+    assert(active.adminSet && signIn("panel-admin-123") && EspConfigApplyState() == 0);
+    uint8_t salt[16], hash[32];
+    memcpy(salt, active.adminSalt, sizeof(salt));
+    memcpy(hash, active.adminHash, sizeof(hash));
+    cfg::Settings local = EspConfigGet();
+    local.unit = 0;
+    assert(EspConfigSubmitLocal(local) == 1 && phase == IDLE); // validated before queuing
+    local.unit = 9;
+    local.mqttEnabled = 1;
+    strcpy(local.host, "hmi.local");
+    strcpy(local.password, "panel-secret");
+    local.adminSet = 0; // whatever the caller holds here is ignored
+    memset(local.adminSalt, 0xee, sizeof(local.adminSalt));
+    memset(local.adminHash, 0xee, sizeof(local.adminHash));
+    auto stored = testNvs;
+    unsigned stops = testStops;
+    safetyState.owner = true;
+    assert(EspConfigSubmitLocal(local) == 0 && EspConfigApplyState() == 1);
+    assert(EspConfigSubmitLocal(local) == 3); // one job at a time
+    step();
+    assert(phase == DENIED && EspConfigApplyState() == 2 && testNvs == stored &&
+           testStops == stops);
+    safetyState.owner = false;
+    assert(EspConfigSubmitLocal(local) == 0);
+    EspConfigPoll(safetyState);
+    assert(phase == FENCING && testStops == stops + 1 && testNvs == stored); // STOP before NVS
+    EspConfigFenced();
+    runWriter();
+    assert(phase == SAVED && EspConfigApplyState() == 4 && testNvs != stored);
+    old = testRestarts;
+    testClock += 1600;
+    EspConfigPoll(safetyState);
+    assert(testRestarts == old + 1);
+    boot();
+    assert(active.unit == 9 && active.mqttEnabled && !strcmp(active.host, "hmi.local") &&
+           !strcmp(active.password, "panel-secret"));
+    assert(active.adminSet && !memcmp(active.adminSalt, salt, sizeof(salt)) &&
+           !memcmp(active.adminHash, hash, sizeof(hash)));
+    assert(!signIn("admin") && signIn("panel-admin-123"));
+    local = EspConfigGet();
+    local.unit = 10;
+    testNvsFailure = true;
+    assert(EspConfigSubmitLocal(local) == 0);
+    step();
+    step();
+    assert(phase == FAILED && EspConfigApplyState() == 3);
+    testNvsFailure = false;
+    boot();
+    assert(active.unit == 9);
     puts("PASS config service: real HTTP handlers/auth, first-use password, stale revision, owner "
          "rejection, STOP fence before NVS, write failure, persisted reboot, physical recovery "
-         "waits for BOOT release, long-uptime login and rollover rate limit");
+         "waits for BOOT release, long-uptime login and rollover rate limit, local DWIN apply "
+         "without touching the admin account");
 }
 int main(int argc, char **) {
     if (argc == 1) {

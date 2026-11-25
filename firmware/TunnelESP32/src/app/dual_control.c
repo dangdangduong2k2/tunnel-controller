@@ -1,4 +1,8 @@
 #include "dual_control.h"
+#ifdef ARDUINO
+#include "../platform/esp32/EspFota.h"
+#include "../platform/esp32/EspDwinUpdate.h"
+#endif
 #include "../platform/esp32/EspPlatform.h"
 #include "../hmi/hmi.h"
 #include "../protocol/legacy/pc_control.h"
@@ -51,6 +55,9 @@ void DualControl_Process(void) {
     if (EspConfigBusy()) {
         return;
     }
+#endif
+#ifdef ARDUINO
+    if (EspFotaBusy() || EspDwinUpdateHold()) return;
 #endif
     EspPcPoll();
     if (StopPending()) {

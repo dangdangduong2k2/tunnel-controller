@@ -3,6 +3,7 @@
 #include <Preferences.h>
 #include <atomic>
 #include "driver/gpio.h"
+#include "driver/uart.h"
 #include "esp_log.h"
 #include "esp_system.h"
 #include "freertos/queue.h"
@@ -11,6 +12,7 @@
 #include "../../app/dual_control.h"
 #include "../../protocol/legacy/SharedUart.h"
 #include "EspModbus.h"
+#include "EspFota.h"
 extern "C" {
 #include "../../control/tunnel.h"
 #include "../../reader/zk7182.h"
@@ -37,11 +39,17 @@ static QueueHandle_t pcTx;
 // so outgoing PC data cannot accidentally write DWIN VPs or system settings.
 extern "C" void EspLog(const char *) {}
 extern "C" void EspRequestEmergency(void) {
+    EspFotaCancel();
     MotorPwm_EmergencyStop();
     stopRequested = true;
 }
 extern "C" void EspRequestSafetyStop(uint8_t reason) {
+    EspFotaCancel();
     MotorPwm_SafetyStop(reason);
+    stopRequested = true;
+}
+extern "C" void EspRequestUpdateFence(void) {
+    MotorPwm_SafetyStop(STOP_PC_DISCONNECT);
     stopRequested = true;
 }
 extern "C" uint8_t EspResetReason(void) {
@@ -72,6 +80,17 @@ extern "C" uint8_t EspHmiTransmit(const uint8_t *data, uint16_t size) {
     if (!ioReady || !size || Serial0.availableForWrite() < size)
         return 0;
     return Serial0.write(data, size) == size;
+}
+extern "C" uint8_t EspHmiTxIdle(void) {
+    // Zero wait: only reports whether the FIFO and the queue behind it are empty
+    // (the same probe EspModbus uses before an RS485 reply).
+    return ioReady && uart_wait_tx_done(UART_NUM_0, 0) == ESP_OK;
+}
+extern "C" uint16_t EspHmiTxFree(void) {
+    return ioReady ? (uint16_t)Serial0.availableForWrite() : 0;
+}
+extern "C" uint8_t EspPcTxPending(void) {
+    return pcTx && uxQueueMessagesWaiting(pcTx) != 0;
 }
 extern "C" void EspHmiEmergency(void) {
     EspRequestEmergency();

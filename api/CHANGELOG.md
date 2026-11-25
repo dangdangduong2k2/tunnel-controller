@@ -1,3 +1,9 @@
+## 0.1.5 (development candidate)
+
+- Add signed `FotaClient` update/status methods. No claim or automatic retry.
+- Optional `fota` dependency group; firmware 1.13.0 and provisioned trust required.
+- Physical OTA and rollback qualification pending.
+
 # Changelog
 
 ## 0.1.4

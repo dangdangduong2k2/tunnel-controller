@@ -14,12 +14,19 @@ extern "C" {
 #define HMI_VP_BUTTON_CONVEYOR 0x1001U
 #define HMI_VP_BUTTON_GATE 0x1010U
 #define HMI_VP_BUTTON_SCAN 0x1020U
+/* Legacy one-button panels use 1 to toggle. HMI v2 separate buttons use
+ * explicit values so repeating START/STOP never reverses the requested action. */
+#define HMI_SCAN_TOGGLE 1U
+#define HMI_SCAN_START 2U
+#define HMI_SCAN_STOP 3U
 #define HMI_VP_BUTTON_AUTO 0x1030U
 #define HMI_VP_BUTTON_EMERGENCY 0x1040U
 #define HMI_VP_BUTTON_RESET 0x1050U
 #define HMI_VP_BUTTON_SEMI 0x1060U
 #define HMI_VP_BUTTON_CONFIRM 0x1070U
 #define HMI_VP_BUTTON_RESCAN 0x1080U
+/* HMI v2: every settings/history/editor touch. Never reaches the machine queue. */
+#define HMI_VP_UI_EVENT 0x1090U
 
 #define HMI_VP_QUANTITY 0x2000U
 
@@ -63,6 +70,9 @@ typedef struct {
     uint8_t crc_mode;
     uint8_t reset_pending;
     uint8_t config_write_pending;
+    uint8_t ui_queue_depth;
+    uint32_t ui_event_count;
+    uint32_t ui_queue_overflow_count;
 } HmiDiagnostics;
 
 extern volatile HmiDiagnostics g_hmi_debug;
@@ -80,6 +90,13 @@ uint8_t Hmi_PopEvent(HmiEvent *event);
 /* Clears normal queued/older receive actions. Pending or in-flight valid
  * RESET/EMERGENCY requests are deliberately preserved. */
 void Hmi_FlushEvents(void);
+/* HMI v2 UI codes received on HMI_VP_UI_EVENT, oldest first. Separate from the
+ * machine queue: no ownership lock, no state-transition fence and no repeat
+ * filtering (typing "11" delivers two identical codes). Emptied by Init, a
+ * UART error and every STOP fence. Values are never copied to diagnostics. */
+uint8_t Hmi_PopUiEvent(uint16_t *value);
+/* Last page written with Hmi_SendPage and how many page writes succeeded. */
+uint16_t Hmi_GetLastPage(uint32_t *write_count);
 
 uint8_t Hmi_SendWord(uint16_t vp, uint16_t value);
 /* Fixed-size ASCII text field, 2..128 even bytes, including FF FF terminator. */

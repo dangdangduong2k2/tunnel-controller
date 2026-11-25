@@ -2,6 +2,8 @@
 #define PC_CONTROL_H
 #include <stdint.h>
 void PcControl_Init(void);
+/* A legacy reader reply must be consumed before a local HMI job can start. */
+uint8_t PcControl_IsReaderBusy(void);
 void PcControl_Process(void);
 uint8_t PcControl_HasStatusRequest(void);
 uint8_t PcControl_CanReceiveBatch(void);

@@ -7,6 +7,7 @@
 #include "BoardProfile.h"
 #include "EspPlatform.h"
 #include "SafetyConfig.h"
+#include "ConveyorSpeed.h"
 extern "C" {
 #include "motor_pwm.h"
 #include "app_config.h"
@@ -129,6 +130,14 @@ int main() {
     assert(hz == 133333 && duty > 0 && pins[5] == CONVEYOR_DIRECTION);
     MotorPwm_Stop(CONVEYOR_DRIVER);
     assert(!duty && pins[6] == 0);
+    // Production level mapping through the actual ESP LEDC backend.
+    const uint32_t levelHz[] = {95238,111111,133333,160000,200000};
+    for (uint8_t level=1;level<=5;++level) {
+        assert(MotorPwm_StartContinuousArr(CONVEYOR_DRIVER, CONVEYOR_DIRECTION, ConveyorSpeed_Arr(level)));
+        assert(hz==levelHz[level-1] && duty>0 && MotorPwm_IsRunning(CONVEYOR_DRIVER));
+        MotorPwm_Stop(CONVEYOR_DRIVER);
+        assert(!duty && !MotorPwm_IsRunning(CONVEYOR_DRIVER));
+    }
     assert(MotorPwm_StartContinuousArr(CONVEYOR_DRIVER, CONVEYOR_REVERSE_DIRECTION, 29));
     assert(hz == 133333 && duty > 0 && pins[5] == CONVEYOR_REVERSE_DIRECTION);
     MotorPwm_Stop(CONVEYOR_DRIVER);

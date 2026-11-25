@@ -5,6 +5,17 @@
 #include "../platform/compat/stm32f4xx_hal.h"
 #include "../common/debug_state.h"
 #include <string.h>
+#include <stdlib.h>
+
+#ifdef TUNNEL_READER_MEMORY_TEST
+extern void *ZK7182_TestAlloc(size_t size);
+extern void ZK7182_TestFree(void *ptr);
+#define EPC_ALLOC ZK7182_TestAlloc
+#define EPC_FREE ZK7182_TestFree
+#else
+#define EPC_ALLOC malloc
+#define EPC_FREE free
+#endif
 
 /* ZK SDK manual V2.20, 8.4.41/42 (Ex10):
  * START 50 + Target A, STOP 51 without payload; tags are reported as EE.
@@ -60,7 +71,40 @@ static volatile uint16_t unique_count;
 static uint32_t total_count;
 static ZK7182_ScanResult scan_result;
 static ZK7182_ScanResult scan_error;
-static ZK7182_UniqueEpc unique_epcs[ZK7182_MAX_UNIQUE_TAGS];
+/* Deduplication needs 65 KiB only while a scan is active. Reserve every
+ * chunk before START, keeping full capacity even with a fragmented heap.
+ * Only the owner task allocates/frees; ISR-safe pause/cancel just set flags.
+ * Completed counts and the last EPC remain in their existing scalar/debug
+ * fields. Late reports cannot access this store once scan_active is false. */
+#define EPC_CHUNK_TAGS 32U
+#define EPC_CHUNKS ((ZK7182_MAX_UNIQUE_TAGS + EPC_CHUNK_TAGS - 1U) / EPC_CHUNK_TAGS)
+static ZK7182_UniqueEpc *epc_chunks[EPC_CHUNKS];
+static void ReleaseEpcStore(void) {
+    uint16_t i;
+    for (i = 0U; i < EPC_CHUNKS; ++i) {
+        if (epc_chunks[i] != NULL) {
+            EPC_FREE(epc_chunks[i]);
+            epc_chunks[i] = NULL;
+        }
+    }
+}
+static uint8_t ReserveEpcStore(void) {
+    uint16_t i;
+    for (i = 0U; i < EPC_CHUNKS; ++i) {
+        if (epc_chunks[i] == NULL) {
+            epc_chunks[i] = (ZK7182_UniqueEpc *)EPC_ALLOC(
+                EPC_CHUNK_TAGS * sizeof(ZK7182_UniqueEpc));
+            if (epc_chunks[i] == NULL) {
+                ReleaseEpcStore();
+                return 0U; /* No RF START and no change to previous counts. */
+            }
+        }
+    }
+    return 1U;
+}
+static ZK7182_UniqueEpc *EpcAt(uint16_t i) {
+    return &epc_chunks[i / EPC_CHUNK_TAGS][i % EPC_CHUNK_TAGS];
+}
 
 static uint8_t TimeReached(uint32_t deadline) {
     return ((int32_t)(HAL_GetTick() - deadline) >= 0) ? 1U : 0U;
@@ -156,7 +200,8 @@ static void StoreEpc(const uint8_t *epc, uint8_t length) {
     }
     g_debug.last_epc_text[length * 2U] = '\0';
     for (i = 0U; i < unique_count; ++i) {
-        if ((unique_epcs[i].length == length) && (memcmp(unique_epcs[i].data, epc, length) == 0)) {
+        const ZK7182_UniqueEpc *stored = EpcAt(i);
+        if ((stored->length == length) && (memcmp(stored->data, epc, length) == 0)) {
             g_debug.duplicate_epc_count++;
             return;
         }
@@ -166,8 +211,8 @@ static void StoreEpc(const uint8_t *epc, uint8_t length) {
         Terminal(ZK7182_SCAN_RESULT_CAPACITY_OVERFLOW);
         return;
     }
-    unique_epcs[unique_count].length = length;
-    (void)memcpy(unique_epcs[unique_count].data, epc, length);
+    EpcAt(unique_count)->length = length;
+    (void)memcpy(EpcAt(unique_count)->data, epc, length);
     unique_count++;
     g_debug.unique_epc_count = unique_count;
 }
@@ -377,6 +422,7 @@ static USBH_StatusTypeDef SendCommand(uint8_t command) {
 }
 
 void ZK7182_Init(void) {
+    ReleaseEpcStore();
     pc_pending = 0U;
     pc_done = 0U;
     pc_reply_length = 0U;
@@ -462,6 +508,9 @@ void ZK7182_Process(void) {
     uint32_t interrupt_state;
     uint8_t need_stop;
     ExpireScan(); /* Deadline also runs while USB is disconnected. */
+    if (scan_active == 0U) {
+        ReleaseEpcStore();
+    }
     if ((transport_ready == 0U) || (USBH_CP210X_IsReady(&hUsbHostFS) == 0U)) {
         return;
     }
@@ -564,6 +613,9 @@ uint8_t ZK7182_IsReady(void) {
 
 uint8_t ZK7182_StartScan(uint32_t duration_ms) {
     if ((ZK7182_IsReady() == 0U) || (scan_active != 0U)) {
+        return 0U;
+    }
+    if (ReserveEpcStore() == 0U) {
         return 0U;
     }
     if (duration_ms == 0U) {

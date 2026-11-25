@@ -31,6 +31,7 @@ class Core {
         return controller != 0;
     }
     uint32_t controlLeaseMs() const;
+    void inhibit(bool value) { inhibited = value; }
     uint8_t owner() const {
         return controller;
     }
@@ -48,6 +49,7 @@ class Core {
         uint16_t result = 0;
     } history[PEERS];
     Backend io;
+    bool inhibited = false;
     uint8_t controller = 0, readerState = 0, readerStatus = 0, readerLength = 0;
     uint8_t readerData[64] = {};
     uint16_t readerSequence = 0, lastSequence = 0, lastResult = 0;

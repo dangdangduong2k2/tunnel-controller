@@ -26,10 +26,15 @@ common = ["TUNNEL_HOST_TEST"]
 real = common + ["TUNNEL_TEST_REAL_READER"]
 dual = real + ["TUNNEL_TEST_REAL_HMI", "PC_CONTROL_TEST", "HMI_STREAM_TEST", "TUNNEL_DUAL_TEST"]
 suites = [
+    ("esp_dwin_update", [tests / "test_esp_dwin_update.cpp", source("EspDwinUpdate.cpp"), source("DwinPatch.cpp")], [], "dwin_stubs", True),
+    ("dwin_patch", [tests / "test_dwin_patch.cpp", source("DwinPatch.cpp")], [], "vendor", True),
+    ("esp_hmi_antenna", [tests / "test_esp_hmi_antenna.cpp", source("EspHmiAntenna.cpp"), source("AntennaSettings.cpp")], [], "esp_stubs", True),
+    ("antenna_settings", [tests / "test_antenna_settings.cpp", source("AntennaSettings.cpp")], [], "vendor", True),
+    ("fota_protocol", [tests / "test_fota_protocol.cpp", source("FotaProtocol.cpp"), source("FotaImage.cpp"), source("ModbusCore.cpp"), tests / "vendor/cJSON.c"], [], "vendor", True),
     (
         "reader_frequency",
         [tests / "test_reader_frequency.c", source("zk7182.c")],
-        common,
+        common + ["TUNNEL_READER_MEMORY_TEST"],
         "stubs_reader",
         False,
     ),
@@ -54,6 +59,20 @@ suites = [
         "esp_stubs",
         True,
     ),
+    (
+        "hmi_ui",
+        [
+            tests / "test_hmi_ui.cpp",
+            source("HmiUi.cpp"),
+            source("History.cpp"),
+            source("DeviceConfig.cpp"),
+            tests / "vendor/cJSON.c",
+        ],
+        [],
+        "vendor",
+        True,
+    ),
+    ("history", [tests / "test_history.cpp", source("History.cpp")], [], "vendor", True),
     (
         "config_service",
         [tests / "test_config_service.cpp", source("DeviceConfig.cpp"), tests / "vendor/cJSON.c"],
@@ -109,6 +128,7 @@ suites = [
         False,
     ),
     ("cycle", [tests / "test_tunnel_hmi.c"] + shared, common, "stubs_tunnel", False),
+    ("finalize", [tests / "test_finalize_hook.c"] + shared, common, "stubs_tunnel", False),
     (
         "reader_cycle",
         [tests / "test_reader_tunnel.c"] + shared + [source("zk7182.c")],
@@ -133,6 +153,13 @@ suites = [
     (
         "esp_hmi",
         [tests / "test_esp_hmi.c", source("hmi.c")],
+        ["HMI_STREAM_TEST"],
+        "stubs_hmi",
+        False,
+    ),
+    (
+        "hmi_ui_events",
+        [tests / "test_hmi_ui_events.c", source("hmi.c")],
         ["HMI_STREAM_TEST"],
         "stubs_hmi",
         False,

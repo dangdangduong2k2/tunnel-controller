@@ -1,4 +1,14 @@
-# Tunnel Controller 1.12.3
+# Tunnel Controller 1.17.2 — ESP32 updates DWIN Scan buttons
+
+Bản 1.17.2 tự sửa nút DWIN qua P1 sau khi ESP OTA xác nhận app mới: fingerprint, đọc lại RAM, CRC flash và phục hồi boot sau. Đồng thời xóa cả chữ/nền thông báo tạm hết hạn. Chỉ cần app ESP32 qua OTA; xem [hướng dẫn 1.17.2](docs/RELEASE_1_17_2.md).
+
+Bản 1.17.1 sửa hai nút Scan START/STOP gửi cùng mã toggle: START chỉ bật scan, STOP chỉ dừng, bấm lặp không đảo trạng thái. **Cần cập nhật cả firmware và file nút DWIN**; xem [hướng dẫn 1.17.1](docs/RELEASE_1_17_1.md). Giữ các sửa antenna và tốc độ của 1.17.0.
+
+Bản 1.17.0 nối trang **Antennas** trên HMI với reader thật: bật/tắt 4 cổng, công suất 0–30 dBm, lưu vào reader hoặc dùng RAM, đọc lại để xác minh. Chia lại 5 mức tốc độ khoảng **95 / 111 / 133 / 160 / 200 kHz**; mức 5 mới bằng mức 3 cũ. Xem [hướng dẫn và kiểm thử 1.17.0](docs/RELEASE_1_17_0.md). Đã kiểm thử phần mềm; cần xác nhận trên reader/băng tải thực tế sau nạp.
+
+**[User Guide tiếng Việt - VI 1.1, 28 trang](api/docs/Tunnel_User_Guide_VI.pdf)** (cập nhật 17/11/2026).
+
+Hướng dẫn kết nối Modbus TCP theo DHCP/Static (trang 24), cài đặt HMI, MQTT, OTA và scan độc lập (trang 25-28); kèm bảng thanh ghi và lệnh của ba giao thức. Guide cập nhật theo firmware **1.16.4**; các mục HMI/OTA cần firmware và gói màn tương ứng. Kiểm tra phiên bản thực tế của bo tại IR1 trước khi áp dụng.
 
 **[User Guide tiếng Việt - VI 1.1, 28 trang](api/docs/Tunnel_User_Guide_VI.pdf)** (cập nhật 17/11/2026).
 
@@ -6,9 +16,39 @@ Hướng dẫn kết nối Modbus TCP theo DHCP/Static (trang 24), cài đặt H
 
 Source ESP32-S3 cho bo Tunnel: điều khiển hai cửa, băng tải, reader ZK-7182M, màn DWIN; PLC/HMI sử dụng Modbus TCP hoặc Modbus RTU, phần mềm sử dụng MQTT. Ba giao thức dùng chung trạng thái máy và quyền điều khiển.
 
+Bản 1.16.4 sửa lỗi thiếu RAM khi bắt tay HTTPS: bảng chống trùng EPC chỉ chiếm
+RAM trong phiên scan, giữ nguyên sức chứa và số đếm đã chốt. Xem
+[nguyên nhân, thay đổi và kiểm chứng](docs/RELEASE_1_16_4.md).
+
+Bản 1.16.2 chuyển cấu hình tin cậy OTA của bo thử nghiệm sang HTTPS công khai
+trên VPS, dùng ISRG Root X1 và giữ nguyên khóa xác minh firmware. Xem
+[triển khai và kết quả kiểm tra](docs/RELEASE_1_16_2.md).
+
+Bản 1.16.1 cho phép OTA **nâng cấp, nạp lại hoặc hạ phiên bản** của file tương
+thích. Đã bỏ so sánh phiên bản ở web, API, SDK và firmware; vẫn giữ chữ ký,
+kiểm tra file và chống lệnh cũ/trùng. Xem [ghi chú 1.16.1](docs/RELEASE_1_16_1.md).
+
+Bản 1.16.0 làm lại OTA ESP32: sửa lỗi tự hủy khi chuẩn bị STOP, đọc phiên bản
+tự động từ `.bin`, đối chiếu URL/khóa ký trước khi gửi, theo dõi khởi động và
+kết quả theo job. Xem [hướng dẫn và test case OTA](docs/OTA_1_16_0.md).
+Kiểm thử phần mềm không thay thế thử tải/rollback trên bo thật.
+
 Bản này chuẩn hóa từ 1.11.0: tách module, tách SDK, gom contract, thêm MQTT theo tên và tài liệu. Giữ nguyên thuật toán chu trình, map thanh ghi, OP và cấu hình NVS. Đây là source để build/kiểm thử; không tự nạp vào bo khi chạy build hoặc test.
 
-Bản 1.12.3: **Scan thủ công độc lập, không cần homing**, không chạy motor. Chu trình AUTO/SEMI vẫn kiểm tra cửa như trước. Xem [hướng dẫn Scan độc lập](docs/SCAN_STANDALONE.md).
+Bản 1.15.0: **màn hình DWIN HMI v2** — cài đặt Ethernet/Modbus/MQTT và tốc độ băng tải ngay trên màn, lịch sử 500 kết quả quét gần nhất có giờ NTP. Antennas/Reader là giai đoạn 2. Xem [HMI v2](docs/HMI_V2.md).
+
+Từ 1.12.2: **Scan thủ công độc lập, không cần homing**, không chạy motor. Chu trình AUTO/SEMI vẫn kiểm tra cửa như trước. Xem [hướng dẫn Scan độc lập](docs/SCAN_STANDALONE.md).
+
+Bản 1.13.0 đã nạp qua USB và xác minh flash trên bo thử nghiệm; **chưa kiểm chứng cập nhật qua OTA/rollback trên bo thật** (bo đã Online và tự phát hiện qua MQTT). Xem [FOTA](docs/FOTA.md) và [công cụ test HTTPS](tools/fota/README.md).
+
+[Trang cập nhật firmware](tools/fota/PORTAL.md): một trang, không đăng nhập,
+tự nhận diện bo qua MQTT; không điền sẵn thiết bị. Cần firmware có discovery để
+bo xuất hiện. Trang đã triển khai tại
+https://103-9-78-139.sslip.io/tunnel/admin/ . Bo có cấu hình URL thử cục bộ cũ
+cần nạp lại qua USB một lần để chuyển sang URL công khai.
+
+Bản 1.13.1 tăng mã firmware lên 1131 để thử cập nhật từ 1.13.0;
+không đổi chức năng máy. Xem [ghi chú bản test](docs/RELEASE_1_13_1.md).
 
 ## SDK theo giao thức
 

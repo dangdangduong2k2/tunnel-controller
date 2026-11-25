@@ -1,6 +1,6 @@
 {
-  "version": "1.12.3",
-  "firmware_register": 1123,
+  "version": "1.17.2",
+  "firmware_register": 1172,
   "register_map": 3,
   "mqtt_api": 1,
   "arduino_core": "3.3.8",

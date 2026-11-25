@@ -1,0 +1,9 @@
+{
+  "BROKER_HOST": "103.9.78.139",
+  "BROKER_PORT": 1883,
+  "BROKER_USER": "tunnel-ota",
+  "BROKER_PASSWORD": "REPLACE_WITH_PORTAL_MQTT_PASSWORD",
+  "PUBLIC_BASE": "https://103-9-78-139.sslip.io/tunnel/firmware/",
+  "SIGNING_KEY": "/etc/tunnel-ota/release.key",
+  "TRUSTED_HOSTS": ["127.0.0.1", "localhost", "103-9-78-139.sslip.io"]
+}

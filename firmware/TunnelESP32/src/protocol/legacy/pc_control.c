@@ -235,6 +235,7 @@ static void Execute(void) {
         Reply(result, NULL, 0U);
     }
 }
+uint8_t PcControl_IsReaderBusy(void) { return waiting_zk; }
 void PcControl_Init(void) {
     rx_write = 0U;
     rx_read = 0U;

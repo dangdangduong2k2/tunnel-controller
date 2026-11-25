@@ -17,3 +17,5 @@ private/
 *.key
 *.p12
 *.pfx
+
+FotaTrust.local.h

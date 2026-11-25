@@ -14,6 +14,8 @@ Phụ thuộc reader/HMI và interface platform; không gọi socket/MQTT. State
 
 ## Kiểm thử
 
+Từ 1.17.0, [ConveyorSpeed.h](ConveyorSpeed.h) là nguồn duy nhất của bảng ARR mức 1–5: 41/35/29/24/19, tương ứng khoảng 95/111/133/160/200 kHz ở backend ESP32. Giữ số mức trong NVS; mức 5 mới bằng mức 3 cũ. `integration` kiểm tra lệnh, lưu và chu kỳ; `esp_outputs` kiểm tra cả năm tần số/duty qua backend LEDC production với driver giả.
+
 `profile`, `cycle`, `reader_cycle`, `two_doors`, `in7_confirmation`, `dwin_manual`, `esp_step`, `esp_outputs`.
 
 ## Source

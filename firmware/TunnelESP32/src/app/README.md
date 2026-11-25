@@ -2,7 +2,7 @@
 
 ## Trách nhiệm
 
-EspApp giữ setup/loop. dual_control xác định thứ tự DWIN → STOP → giao thức mạng → PC → sensor → Tunnel; STOP xóa lệnh cũ đang chờ trước khi có thể chạy vòng tiếp theo.
+EspApp giữ setup/loop. dual_control xác định thứ tự DWIN → STOP → giao thức mạng → PC → sensor → Tunnel; STOP xóa lệnh cũ đang chờ trước khi có thể chạy vòng tiếp theo. History giữ500 kết quả đã chốt gần nhất trong RAM, logic thuần với storage tiêm vào (25 khối×20 bản ghi, CRC từng khối).
 
 ## Giao diện và ngữ cảnh gọi
 
@@ -14,7 +14,7 @@ Phụ thuộc platform/esp32, control, reader, hmi, protocol. Không thêm netwo
 
 ## Kiểm thử
 
-`dual`, `shared_uart`, `modbus_integration`, build ESP32 thật.
+`dual`, `shared_uart`, `modbus_integration`, `history`, build ESP32 thật.
 
 ## Source
 
@@ -22,3 +22,5 @@ Phụ thuộc platform/esp32, control, reader, hmi, protocol. Không thêm netwo
 - [dual_control.c](dual_control.c)
 - [dual_control.h](dual_control.h)
 - [EspApp.cpp](EspApp.cpp)
+- [History.cpp](History.cpp)
+- [History.h](History.h)

@@ -71,6 +71,8 @@ static uint32_t manual_scan_stop_tick;
 static uint32_t manual_scan_wait_tick;
 static uint32_t manual_conveyor_tick;
 static uint8_t hmi_conveyor_down;
+static uint8_t hmi_scan_explicit;
+void Tunnel_SetHmiScanExplicit(uint8_t enabled) { hmi_scan_explicit = enabled != 0U; }
 static uint32_t hmi_status_tick;
 static uint32_t hmi_result_refresh_tick;
 static uint16_t hmi_last_quantity;
@@ -92,12 +94,12 @@ static volatile uint32_t active_scan_duration_ms;
 static uint8_t pc_maintenance;
 static uint8_t emergency_latched;
 static uint8_t conveyor_speed_level;
-static const uint16_t conveyor_arr[5] = {41U, 29U, 19U, 9U, 4U};
+#include "ConveyorSpeed.h"
 uint8_t Tunnel_GetSpeedLevel(void) {
     return conveyor_speed_level;
 }
 uint16_t Tunnel_GetConveyorArr(void) {
-    return conveyor_arr[conveyor_speed_level - 1U];
+    return ConveyorSpeed_Arr(conveyor_speed_level);
 }
 static volatile uint8_t pc_motion_owned;
 static volatile uint8_t pc_lease_expired;
@@ -124,6 +126,21 @@ static void Tunnel_BeginHome(TunnelHomeReason reason);
 static void Tunnel_StartRescan(void);
 static void Tunnel_HandleHmiEvents(void);
 static void Tunnel_UpdateHmi(uint32_t now);
+
+/* Observer only: never consulted by the state machine. Null unless the
+ * platform registers one, so host tests and sequencing are unaffected. */
+static TunnelFinalizeHook finalize_hook;
+void Tunnel_SetFinalizeHook(TunnelFinalizeHook hook) {
+    finalize_hook = hook;
+}
+/* Reports the displayed quantity once per result. The OPEN_STEP check drops a
+ * confirmation whose gate opening could not start (the cycle faulted) and a
+ * plain mode/manual gate opening (TUNNEL_MODE_OPEN_GATE). */
+static void Tunnel_ReportFinalized(uint8_t semi, uint32_t cycle_token) {
+    if ((finalize_hook != (TunnelFinalizeHook)0) && (tunnel_state == TUNNEL_OPEN_STEP)) {
+        finalize_hook(semi, display_quantity, cycle_token);
+    }
+}
 
 static uint8_t Tunnel_IsInventoryState(void) {
     return ((tunnel_state == TUNNEL_CONVEYOR_INVENTORY_TO_SS3) ||
@@ -1048,9 +1065,13 @@ static void Tunnel_HandleHmiEvents(void) {
             Tunnel_BeginHome(TUNNEL_HOME_RESET);
             return;
         }
-        if ((event.vp == HMI_VP_BUTTON_SCAN) && (event.value == 1U)) {
-            if (Tunnel_RequestManualScan(manual_scan_requested ? 0U : 1U))
-                g_debug.tunnel_hmi_ignored_count++;
+        if (event.vp == HMI_VP_BUTTON_SCAN) {
+            uint16_t run;
+            if (event.value == HMI_SCAN_START) run = 1U;
+            else if (event.value == HMI_SCAN_STOP) run = 0U;
+            else if (event.value == HMI_SCAN_TOGGLE) run = (hmi_scan_explicit || manual_scan_requested) ? 0U : 1U;
+            else continue; /* release/unknown value: never starts RF */
+            if (Tunnel_RequestManualScan(run)) g_debug.tunnel_hmi_ignored_count++;
             continue;
         }
         if (emergency_latched != 0U) {
@@ -1076,8 +1097,10 @@ static void Tunnel_HandleHmiEvents(void) {
         }
         if ((event.vp == HMI_VP_BUTTON_CONFIRM) && (event.value == 1U)) {
             if (tunnel_state == TUNNEL_WAIT_CONFIRM) {
+                uint32_t confirm_token = state_entry_tick;
                 Hmi_FlushEvents();
                 Tunnel_StartOpeningStepState(TUNNEL_OPEN_STEP);
+                Tunnel_ReportFinalized(1U, confirm_token);
                 return;
             }
             g_debug.tunnel_hmi_ignored_count++;
@@ -1275,6 +1298,7 @@ void Tunnel_Init(void) {
     manual_scan_wait_tick = now;
     manual_conveyor_tick = now;
     hmi_conveyor_down = 0U;
+    hmi_scan_explicit = 0U;
     hmi_status_tick = now;
     hmi_result_refresh_tick = now;
     hmi_quantity_valid = 0U;
@@ -1480,6 +1504,11 @@ void Tunnel_Process(void) {
             Tunnel_EnterFault(TUNNEL_FAULT_STEP_OPEN_COUNT);
         } else if (!Tunnel_GatesRunning()) {
             g_debug.tunnel_step_open_pulse_count = MotorPwm_GetPulseCount(STEP_DRIVER);
+            /* AUTO result is final once its gate has opened without any fault
+             * recorded for this cycle. SEMI was reported at confirmation. */
+            if ((cycle_semi == 0U) && (tunnel_fault == TUNNEL_FAULT_NONE)) {
+                Tunnel_ReportFinalized(0U, state_entry_tick);
+            }
             Hmi_FlushEvents();
             Tunnel_SetState(TUNNEL_WAIT_REARM);
         }
@@ -1739,7 +1768,8 @@ uint8_t Tunnel_RemoteCommand(uint8_t command, uint16_t value) {
         }
         if ((Tunnel_GatesRunning() != 0U) || (MotorPwm_IsRunning(CONVEYOR_DRIVER) != 0U) ||
             (ZK7182_IsScanActive() != 0U) || (manual_scan_requested != 0U) ||
-            ((Tunnel_ManualAllowed() == 0U) && (tunnel_state != TUNNEL_STOPPED))) {
+            ((Tunnel_ManualAllowed() == 0U) && (tunnel_state != TUNNEL_STOPPED) &&
+             (tunnel_state != TUNNEL_STARTUP_WAIT) && (tunnel_state != TUNNEL_FAULT))) {
             return 2U;
         }
         if (ZK7182_IsReady() == 0U) {
@@ -1774,8 +1804,10 @@ uint8_t Tunnel_RemoteCommand(uint8_t command, uint16_t value) {
             return 2U;
         }
         if (command == 0x15U) {
+            uint32_t confirm_token = state_entry_tick;
             Hmi_FlushEvents();
             Tunnel_StartOpeningStepState(TUNNEL_OPEN_STEP);
+            Tunnel_ReportFinalized(1U, confirm_token);
         } else {
             Tunnel_StartRescan();
         }

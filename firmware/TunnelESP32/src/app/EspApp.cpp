@@ -1,5 +1,8 @@
 #include <Arduino.h>
 #include "Application.h"
+#include "../platform/esp32/EspFota.h"
+#include "../platform/esp32/EspDwinUpdate.h"
+#include "../platform/esp32/EspConfig.h"
 #include "dual_control.h"
 #include "../platform/esp32/BoardProfile.h"
 #include "../platform/esp32/EspPlatform.h"
@@ -30,8 +33,6 @@ void tunnelSetup() {
     ZK7182_Init();
     Hmi_Init();
     Tunnel_Init();
-    EspUsbBegin();
-    EspModbusBegin();
     EspControlAlive();
     if (xTaskCreatePinnedToCore(safetyTask, "motor-safety", 3072, nullptr, 5, nullptr, 1) !=
             pdPASS ||
@@ -39,13 +40,21 @@ void tunnelSetup() {
         MotorPwm_SafetyStop(STOP_INITIALIZATION);
         EspRuntimeDisable();
     }
+    if (EspRuntimeReady()) EspDwinUpdateBegin();
+    EspUsbBegin();
+    EspModbusBegin();
 }
 void tunnelLoop() {
     if (!EspRuntimeReady()) {
+        EspFotaHealth(false);
         delay(100);
         return;
     }
     EspControlAlive();
+    EspFotaHealth(EspConfigStorageReady() && EspMotorReady() && !MotorPwm_IsRunning(MOTOR_PWM_DRIVER_1) &&
+        !MotorPwm_IsRunning(MOTOR_PWM_DRIVER_2) && !MotorPwm_IsRunning(MOTOR_PWM_DRIVER_4) &&
+        !ZK7182_IsScanActive());
+    EspDwinUpdatePoll();
     DualControl_Process();
     EspUsbPoll();
     ZK7182_Process();

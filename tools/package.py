@@ -42,7 +42,7 @@ def main():
                 p.relative_to(ROOT).parts
             )
             and p.suffix not in (".pyc", ".pyo")
-            and p.name not in ("mqtt_config.json", "settings.json")
+            and p.name not in ("mqtt_config.json", "settings.json", "FotaTrust.local.h")
         ]
     files += [binary, ROOT / "dist/build.json", ROOT / "dist/SHA256SUMS.txt"]
     manifest = {

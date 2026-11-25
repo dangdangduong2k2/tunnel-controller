@@ -24,7 +24,7 @@ DWIN UART2 phải TTL,115200,8N1, GND chung. P1 chân3 là RX ESP32 nhận TX2 m
 
 J5 CH340 nối UART0 chung với DWIN; PC giao thức ASCII không phải cách ly điện. TX của CH340 và TX màn có thể tranh chấp trên RX44. Không sửa parser để che lỗi này. J4 dùng USB host cho reader CP210x; tháo reader khi dùng native USB J4 để nạp. USB host reader và native download không dùng đồng thời cùng cổng.
 
-Source này chỉ gửi word/text VP tới giao diện DWIN đã nạp. Nó không chứa source project DGUS/ảnh/fonts của màn và không tự vẽ lại toàn bộ giao diện khi màn chưa có widget đúng VP. [hmi_fields.json](../contracts/hmi_fields.json) là map12ô kết nối; Quantity VP0x2000.
+Source này chỉ gửi word/text VP tới giao diện DWIN đã nạp. Nó không chứa source project DGUS/ảnh/fonts của màn và không tự vẽ lại toàn bộ giao diện khi màn chưa có widget đúng VP. [hmi_fields.json](../contracts/hmi_fields.json) là map các ô kết nối của HMI v2; Quantity VP0x2000. Từ 1.15.0 firmware cần gói màn HMI v2, xem [HMI v2](HMI_V2.md).
 
 ## Ethernet / RS485
 

@@ -8,11 +8,19 @@ Tất cả test tự động mặc định chạy trên host/loopback, không n�
 
 | Suite | Hành vi kiểm tra |
 |---|---|
+| dwin_patch | Engine: fingerprint, RAM readback, một block, CRC, timeout, STOP, journal, mất ACK/phục hồi |
+| esp_dwin_update | Adapter: chờ OTA VALID, owners, HOLD, watchdog, giữ gate khi lỗi, reboot phục hồi |
+| antenna_settings | Set/Get power/mask, RAM/persistent, readback mismatch, malformed/error, timeout/cancel/drain và không retry ghi |
+| esp_hmi_antenna | Adapter production: khóa HMI, độc quyền reader, chặn remote/OTA/flash/motion, startup không Home, STOP và nhả quyền |
 | reader_frequency | START/STOP thật, không config reader ngầm, fragmented EPC, timeout/reconnect/overflow |
 | mqtt_transport | EspMqtt thật với fake ESP queue/client; get/state, flood isolation, retained/fragment, reconnect |
 | mqtt_api | Numeric/named JSON, range/duplicate/mixed schema, ownership/replay/lease và reader |
 | modbus_core | FC/frame/address/CRC/mailbox, sequence, owner, exceptions |
-| hmi_network | VP/text/frame kết nối, NO LINK, config, round-robin và UART retry |
+| hmi_network | Publisher cũ (không còn được firmware gọi): VP/text/frame, round-robin, UART retry |
+| hmi_ui | HMI v2: canh lề/fit so với gói màn, trình sửa và validation, khóa khi máy bận, Discard, toast, lịch sử, tốc độ, UART đầy |
+| history | 500 bản ghi quay vòng, khôi phục thứ tự khi boot, khối hỏng/thiếu/cũ, báo chốt trùng, ghi lại khi lỗi |
+| hmi_ui_events | hmi.c thật: VP0x1090 vào hàng đợi riêng, mã lặp vẫn giao đủ, Emergency/Reset giữ ưu tiên |
+| finalize | tunnel.c thật: hook kết quả gọi đúng một lần (AUTO khi mở cửa xong, SEMI khi Confirm), không gọi khi Rescan/scan tay/lỗi/Emergency |
 | config_service | HTTP/NVS job và fence thật với fake ESP/NVS |
 | device_config | Schema/CRC/two slots, partial update, secrets, validation |
 | protocol_sim | Build process host cho SDK integration; production core với fake IO |

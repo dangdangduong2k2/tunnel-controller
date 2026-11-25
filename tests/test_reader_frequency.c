@@ -8,6 +8,24 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
+
+static unsigned allocated_blocks, allocation_calls, fail_allocation;
+void *ZK7182_TestAlloc(size_t size) {
+    void *p;
+    allocation_calls++;
+    if (fail_allocation && allocation_calls == fail_allocation)
+        return NULL;
+    p = malloc(size);
+    if (p)
+        allocated_blocks++;
+    return p;
+}
+void ZK7182_TestFree(void *p) {
+    assert(p && allocated_blocks);
+    allocated_blocks--;
+    free(p);
+}
 
 volatile DebugStateTypeDef g_debug;
 USBH_HandleTypeDef hUsbHostFS;
@@ -459,7 +477,7 @@ static void TestEmptyOverflowAndUnsolicited(void) {
     BootAt(0U);
     Start();
     for (i = 0U; i <= ZK7182_MAX_UNIQUE_TAGS; ++i) {
-        Tag(i, 1U, 12U);
+        Tag(i, 1U, ZK7182_MAX_EPC_BYTES);
     }
     assert(ZK7182_GetUniqueEpcCount() == ZK7182_MAX_UNIQUE_TAGS);
     assert(ZK7182_GetScanResult() == ZK7182_SCAN_RESULT_CAPACITY_OVERFLOW);
@@ -475,6 +493,60 @@ static void TestEmptyOverflowAndUnsolicited(void) {
     Advance(ZK7182_STOP_QUIET_MS);
     assert(ZK7182_IsReady() == 1U);
 }
+static void TestScanMemoryLifecycle(void) {
+    unsigned chunks, failure, before;
+    BootAt(0U);
+    assert(allocated_blocks == 0U);
+    Start();
+    chunks = allocated_blocks;
+    assert(chunks > 0U);
+    Tag(71U, 1U, 64U);
+    ZK7182_PauseScan();
+    ZK7182_Process();
+    assert(allocated_blocks == chunks); /* A pause must retain dedup state. */
+    Sent();
+    Reply(0x51U, 0U);
+    Advance(ZK7182_STOP_QUIET_MS);
+    ZK7182_ResumeScan();
+    ZK7182_Process();
+    Sent();
+    Reply(0x50U, 0U);
+    Tag(71U, 1U, 64U);
+    assert(ZK7182_GetUniqueEpcCount() == 1U);
+    assert(ZK7182_GetTotalReadCount() == 2U);
+    Stop();
+    ZK7182_CancelScan();
+    Advance(ZK7182_STOP_QUIET_MS);
+    assert(allocated_blocks == 0U);
+    assert(ZK7182_GetUniqueEpcCount() == 1U);
+    assert(ZK7182_GetTotalReadCount() == 2U);
+    before = tx_count;
+    for (failure = 1U; failure <= chunks; ++failure) {
+        allocation_calls = 0U;
+        fail_allocation = failure;
+        assert(ZK7182_StartScan(30000U) == 0U);
+        ZK7182_Process();
+        assert(allocated_blocks == 0U); /* Partial reservations are unwound. */
+        assert(tx_count == before && ZK7182_IsScanActive() == 0U);
+        assert(ZK7182_GetUniqueEpcCount() == 1U);
+        assert(ZK7182_GetTotalReadCount() == 2U);
+    }
+    fail_allocation = 0U;
+    Start();
+    Tag(71U, 1U, 64U); /* Next scan counts it again. */
+    assert(ZK7182_GetUniqueEpcCount() == 1U);
+    tick = scan_start + 30000U;
+    ZK7182_Process();
+    assert(allocated_blocks == 0U && ZK7182_GetUniqueEpcCount() == 1U);
+    Tag(72U, 1U, 64U); /* Late report after release must be ignored. */
+    assert(allocated_blocks == 0U && ZK7182_GetUniqueEpcCount() == 1U);
+    BootAt(0U);
+    Start();
+    ZK7182_TransportLost();
+    tick = scan_start + 30000U;
+    ZK7182_Process();
+    assert(allocated_blocks == 0U); /* Cleanup even without USB. */
+}
 int main(void) {
     TestUnder100AndLongEpc();
     TestDeadline(0U);
@@ -485,8 +557,9 @@ int main(void) {
     TestLostAckAndSilence();
     TestParserAndCutoff();
     TestEmptyOverflowAndUnsolicited();
+    TestScanMemoryLifecycle();
     puts("PASS reader START-only: no config TX; 99 tags/297 reads; long/fragmented EPC; "
          "pause/resume; 30 s/wrap; cancel/reconnect; lost ACK/data confirmation; bounded retries; "
-         "overflow");
+         "overflow; idle memory release; allocation failure at every chunk");
     return 0;
 }

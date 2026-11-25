@@ -419,3 +419,9 @@ repo private hoặc kênh bàn giao; loại password khỏi log. Phân phối pr
 thỏa thuận với chủ sở hữu: [LICENSE](LICENSE). Dependency giữ giấy phép riêng.
 
 [MQTT timing](docs/MQTT_TIMING.md)
+
+## FOTA (SDK 0.1.5 candidate)
+
+`FotaClient` provides `get_update_status()` and signed `update_firmware(...)`.
+See [FOTA](docs/FOTA.md). This is separate from motion ownership and requires
+FOTA-enabled firmware plus provisioned HTTPS/signing trust. Hardware qualification is pending.

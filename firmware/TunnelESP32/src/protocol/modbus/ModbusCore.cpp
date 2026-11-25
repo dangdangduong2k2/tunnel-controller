@@ -201,6 +201,7 @@ uint8_t Core::write(uint8_t peer, uint16_t address, const uint16_t *v, uint16_t 
         io.stop(true);
         return 0;
     }
+    if (inhibited) return EX_BUSY;
     if (address == 0x100 && count == 1) {
         if (v[0] > 1)
             return EX_VALUE;

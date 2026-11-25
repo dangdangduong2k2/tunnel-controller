@@ -18,6 +18,7 @@
 #define HMI_RX_RING_CAPACITY 128U
 #define HMI_RX_BODY_CAPACITY 32U
 #define HMI_EVENT_QUEUE_CAPACITY 16U
+#define HMI_UI_QUEUE_CAPACITY 32U
 #define HMI_RX_FRAME_TIMEOUT_MS 50UL
 #define HMI_CONFIG_RETRY_MS 250UL
 #define HMI_CONFIG_VERIFY_MS 50UL
@@ -69,6 +70,13 @@ static uint8_t s_event_head;
 static uint8_t s_event_tail;
 static uint8_t s_event_count;
 static uint8_t s_priority_pending;
+
+static uint16_t s_ui_queue[HMI_UI_QUEUE_CAPACITY];
+static uint8_t s_ui_head;
+static uint8_t s_ui_tail;
+static uint8_t s_ui_count;
+static uint16_t s_last_page;
+static uint32_t s_page_write_count;
 
 static uint8_t s_crc_mode;
 static uint8_t s_config_read_attempts;
@@ -282,6 +290,34 @@ static uint8_t Hmi_IsWhitelistedVp(uint16_t vp) {
     }
 }
 
+static void Hmi_ClearUiEvents(void) {
+    s_ui_head = 0U;
+    s_ui_tail = 0U;
+    s_ui_count = 0U;
+    g_hmi_debug.ui_queue_depth = 0U;
+}
+
+/* Settings/history touches. They cannot move the machine, so the ownership
+ * lock and the state-transition fence do not apply; identical codes in a row
+ * are distinct key presses. last_vp/last_value are left alone because the
+ * value can be a password character. */
+static void Hmi_QueueUiEvent(uint16_t value) {
+    if (s_priority_pending == HMI_PRIORITY_EMERGENCY) {
+        g_hmi_debug.rx_ignored_frame_count++;
+        return;
+    }
+    if (s_ui_count >= HMI_UI_QUEUE_CAPACITY) {
+        /* Keep the accepted prefix intact; the newest touch is lost. */
+        g_hmi_debug.ui_queue_overflow_count++;
+        return;
+    }
+    s_ui_queue[s_ui_tail] = value;
+    s_ui_tail = (uint8_t)((s_ui_tail + 1U) % HMI_UI_QUEUE_CAPACITY);
+    s_ui_count++;
+    g_hmi_debug.ui_queue_depth = s_ui_count;
+    g_hmi_debug.ui_event_count++;
+}
+
 static void Hmi_QueueEvent(uint16_t vp, uint16_t value, uint32_t frame_generation) {
     g_hmi_debug.last_vp = vp;
     g_hmi_debug.last_value = value;
@@ -295,6 +331,7 @@ static void Hmi_QueueEvent(uint16_t vp, uint16_t value, uint32_t frame_generatio
         s_event_tail = 0U;
         s_event_count = 0U;
         s_priority_pending = HMI_PRIORITY_EMERGENCY;
+        Hmi_ClearUiEvents();
         g_hmi_debug.event_queue_depth = 0U;
         g_hmi_debug.emergency_pending = 1U;
         g_hmi_debug.reset_pending = 0U;
@@ -444,6 +481,11 @@ static void Hmi_HandleFrame(void) {
 
     vp = (uint16_t)(((uint16_t)s_body[1] << 8U) | s_body[2]);
     value = (uint16_t)(((uint16_t)s_body[4] << 8U) | s_body[5]);
+    if (vp == HMI_VP_UI_EVENT) {
+        Hmi_RecordCrcMode(frame_crc_mode);
+        Hmi_QueueUiEvent(value);
+        return;
+    }
     if (Hmi_IsWhitelistedVp(vp) == 0U) {
         g_hmi_debug.rx_ignored_frame_count++;
         return;
@@ -518,6 +560,7 @@ void Hmi_ReceiveError(void) {
     Hmi_ResetParser();
     s_event_head = s_event_tail = s_event_count = 0U;
     s_priority_pending = 0U;
+    Hmi_ClearUiEvents();
     g_hmi_debug.event_queue_depth = 0U;
     g_hmi_debug.emergency_pending = 0U;
     g_hmi_debug.reset_pending = 0U;
@@ -606,6 +649,11 @@ void Hmi_Init(void) {
     s_event_tail = 0U;
     s_event_count = 0U;
     s_priority_pending = HMI_PRIORITY_NONE;
+    s_ui_head = 0U;
+    s_ui_tail = 0U;
+    s_ui_count = 0U;
+    s_last_page = 0U;
+    s_page_write_count = 0U;
 
     s_crc_mode = HMI_CRC_UNKNOWN;
     s_config_read_attempts = 0U;
@@ -682,6 +730,17 @@ uint8_t Hmi_PopEvent(HmiEvent *event) {
     return 1U;
 }
 
+uint8_t Hmi_PopUiEvent(uint16_t *value) {
+    if ((value == NULL) || (s_ui_count == 0U)) {
+        return 0U;
+    }
+    *value = s_ui_queue[s_ui_head];
+    s_ui_head = (uint8_t)((s_ui_head + 1U) % HMI_UI_QUEUE_CAPACITY);
+    s_ui_count--;
+    g_hmi_debug.ui_queue_depth = s_ui_count;
+    return 1U;
+}
+
 void Hmi_FlushEvents(void) {
     uint32_t primask;
 #ifdef HMI_STREAM_PORT
@@ -728,6 +787,7 @@ void Hmi_DiscardActionsAfterStop(void) {
     Hmi_ResetParser();
     s_event_head = s_event_tail = s_event_count = 0U;
     s_priority_pending = HMI_PRIORITY_NONE;
+    Hmi_ClearUiEvents();
     g_hmi_debug.event_queue_depth = 0U;
     g_hmi_debug.emergency_pending = g_hmi_debug.reset_pending = 0U;
 }
@@ -737,7 +797,19 @@ uint8_t Hmi_SendPage(uint16_t page) {
 
     values[0] = 0x5A01U;
     values[1] = page;
-    return Hmi_SendWords(0x0084U, values, 2U);
+    if (Hmi_SendWords(0x0084U, values, 2U) == 0U) {
+        return 0U;
+    }
+    s_last_page = page;
+    s_page_write_count++;
+    return 1U;
+}
+
+uint16_t Hmi_GetLastPage(uint32_t *write_count) {
+    if (write_count != NULL) {
+        *write_count = s_page_write_count;
+    }
+    return s_last_page;
 }
 
 uint8_t Hmi_SendQuantity(uint16_t quantity) {

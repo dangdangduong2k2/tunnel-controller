@@ -192,7 +192,54 @@ static void TestNoBypassOfStopOrPcOwnership(void) {
     assert(MotorPwm_IsRunning(STEP_DRIVER) && MotorPwm_IsRunning(STEP2_DRIVER));
 }
 
+static void TestExplicitScanButtons(void) {
+    uint32_t sessions;
+    DwinHome();
+    Tunnel_SetHmiScanExplicit(1U);
+    DualRun(300U);
+    sessions = g_debug.scan_session_count;
+    /* Before screen migration, both old v2 buttons still send 1. It must no
+     * longer start RF, even if the screen was unplugged/unknown during update. */
+    Lcd(HMI_VP_BUTTON_SCAN, 1U);
+    Lcd(HMI_VP_BUTTON_SCAN, 1U);
+    DualRun(300U);
+    assert(!ZK7182_IsScanActive() && g_debug.scan_session_count == sessions);
+    /* STOP while idle, including repeated taps, must never create a scan. */
+    Lcd(HMI_VP_BUTTON_SCAN, HMI_SCAN_STOP);
+    Lcd(HMI_VP_BUTTON_SCAN, HMI_SCAN_STOP);
+    DualRun(500U);
+    assert(!ZK7182_IsScanActive() && g_debug.scan_session_count == sessions);
+    Lcd(HMI_VP_BUTTON_SCAN, HMI_SCAN_START);
+    DualRun(600U);
+    assert(ZK7182_IsScanActive() && g_debug.scan_session_count == sessions + 1U);
+    assert(ZK7182_GetUniqueEpcCount() > 0U);
+    Lcd(HMI_VP_BUTTON_SCAN, HMI_SCAN_START);
+    DualRun(200U);
+    assert(ZK7182_IsScanActive() && g_debug.scan_session_count == sessions + 1U);
+    assert(ZK7182_GetUniqueEpcCount() > 0U); /* no restart/count reset */
+    Lcd(HMI_VP_BUTTON_SCAN, HMI_SCAN_STOP);
+    Lcd(HMI_VP_BUTTON_SCAN, HMI_SCAN_STOP);
+    DualRun(1200U);
+    assert(!ZK7182_IsScanActive());
+    Lcd(HMI_VP_BUTTON_SCAN, HMI_SCAN_STOP);
+    DualRun(600U);
+    assert(!ZK7182_IsScanActive() && g_debug.scan_session_count == sessions + 1U);
+    assert(!MotorPwm_IsRunning(STEP_DRIVER) && !MotorPwm_IsRunning(STEP2_DRIVER));
+    assert(!MotorPwm_IsRunning(CONVEYOR_DRIVER));
+    Lcd(HMI_VP_BUTTON_SCAN, HMI_SCAN_START);
+    DualRun(600U);
+    assert(ZK7182_IsScanActive() && g_debug.scan_session_count == sessions + 2U);
+    Lcd(HMI_VP_BUTTON_EMERGENCY, 1U);
+    DualRun(300U);
+    Lcd(HMI_VP_BUTTON_SCAN, HMI_SCAN_START);
+    Lcd(HMI_VP_BUTTON_SCAN, HMI_SCAN_STOP);
+    DualRun(1200U);
+    CheckStopped();
+    assert(!ZK7182_IsScanActive() && g_debug.scan_session_count == sessions + 2U);
+    puts("PASS explicit Scan START/STOP: repeated STOP stays stopped, repeated START keeps the session/count, Emergency remains latched");
+}
 int main(void) {
+    TestExplicitScanButtons();
     TestGateAfterReset();
     TestScanAfterReset();
     TestConveyorTapToggle();
